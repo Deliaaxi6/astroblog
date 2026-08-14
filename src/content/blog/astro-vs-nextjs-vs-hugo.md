@@ -1,6 +1,7 @@
 ---
 title: '2026 博客技术栈对比：Astro vs Next.js vs Hugo'
 description: '纯内容博客、全栈应用、极简静态站，各自的最优解是什么？'
+cover: https://bu.dusays.com/2026/03/24/69c1e38b346cb.jpg
 pubDate: 2026-08-08
 tags: ['技术选型', 'Astro', 'Next.js', 'Hugo']
 ---

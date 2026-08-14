@@ -1,6 +1,7 @@
 ---
 title: 'Hello World'
 description: '博客的第一篇文章，介绍一下这个站点。'
+cover: https://bu.dusays.com/2026/03/31/69cb69bb530d8.jpg
 pubDate: 2026-08-10
 tags: ['随笔', '站点']
 ---

@@ -1,6 +1,7 @@
 ---
 title: '为什么内容以 Markdown 优先'
 description: '纯文本、可版本管理、可迁移，Markdown 是最持久的内容格式。'
+cover: https://bu.dusays.com/2026/03/24/69c26fe4acdb5.jpg
 pubDate: 2026-07-20
 updatedDate: 2026-08-01
 tags: ['写作', 'Markdown']
