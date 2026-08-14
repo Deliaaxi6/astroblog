@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>AstroBlog 图床</title>
+<title>AstroBlog 管理台</title>
 <style>
 :root {
   --indigo:#6366f1; --indigo-light:#818cf8; --indigo-dark:#4f46e5;
@@ -16,173 +16,209 @@
 body {
   font-family:"Noto Serif SC","Source Han Serif SC","Songti SC","SimSun",serif;
   background:#020617; color:var(--text-main); min-height:100vh;
-  display:flex; flex-direction:column; align-items:center; padding:48px 20px;
+  display:flex; flex-direction:column; align-items:center; padding:40px 20px;
 }
 body::before {
   content:""; position:fixed; inset:0; z-index:-1; pointer-events:none;
   background:radial-gradient(800px 500px at 80% -10%, rgba(49,46,129,.5), transparent 60%),
              radial-gradient(600px 400px at -10% 100%, rgba(88,28,135,.4), transparent 60%);
 }
-h1 { font-size:28px; font-weight:900; letter-spacing:-.02em; margin-bottom:8px;
+h1 { font-size:26px; font-weight:900; letter-spacing:-.02em; margin-bottom:6px;
   background:linear-gradient(120deg,#e2e8f0,#a5b4fc,#f0abfc);
   -webkit-background-clip:text; background-clip:text; color:transparent; }
-.sub { color:var(--text-mute); font-size:14px; margin-bottom:32px; font-weight:600; }
+.sub { color:var(--text-mute); font-size:13px; margin-bottom:24px; font-weight:600; }
+.wrap { width:100%; max-width:860px; }
+.tabs { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:20px; }
+.tabs button {
+  padding:9px 18px; border:1px solid var(--card-border); border-radius:999px;
+  background:rgba(51,65,85,.4); color:var(--text-sub); font-size:14px; font-weight:700;
+  cursor:pointer; transition:all .2s; font-family:inherit;
+}
+.tabs button:hover { color:var(--indigo-light); border-color:rgba(129,140,248,.4); }
+.tabs button.active { background:var(--indigo); color:#fff; border-color:transparent;
+  box-shadow:0 8px 15px -3px rgba(99,102,241,.4); }
+.panel { display:none; }
+.panel.show { display:block; }
 .card {
-  width:100%; max-width:560px; background:var(--card-bg);
-  backdrop-filter:var(--blur); -webkit-backdrop-filter:var(--blur);
+  background:var(--card-bg); backdrop-filter:var(--blur); -webkit-backdrop-filter:var(--blur);
   border:1px solid var(--card-border); border-radius:24px;
-  box-shadow:0 20px 25px -5px rgba(0,0,0,.4); padding:28px;
+  box-shadow:0 20px 25px -5px rgba(0,0,0,.4); padding:26px;
 }
-.drop {
-  border:2px dashed rgba(129,140,248,.4); border-radius:16px;
-  padding:40px 20px; text-align:center; cursor:pointer;
-  transition:all .25s; background:rgba(99,102,241,.05);
-}
-.drop:hover, .drop.drag { border-color:var(--indigo-light); background:rgba(99,102,241,.12); }
-.drop .big { font-size:40px; margin-bottom:10px; }
-.drop p { color:var(--text-mute); font-size:14px; font-weight:600; }
-.drop p b { color:var(--indigo-light); }
-#fileInput { display:none; }
-.row { display:flex; gap:12px; margin-top:20px; }
+.card + .card { margin-top:16px; }
+.card-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:16px; }
+.card-head h2 { font-size:18px; font-weight:900; letter-spacing:.04em; }
+.row { display:flex; gap:12px; margin-top:16px; }
 .btn {
-  flex:1; padding:14px 0; border:none; border-radius:14px; cursor:pointer;
-  font-size:16px; font-weight:700; transition:all .25s;
-  font-family:inherit;
+  padding:12px 20px; border:none; border-radius:14px; cursor:pointer;
+  font-size:14px; font-weight:700; transition:all .25s; font-family:inherit;
 }
 .btn-primary { background:var(--indigo); color:#fff; box-shadow:0 10px 15px -3px rgba(99,102,241,.4); }
 .btn-primary:hover { background:var(--indigo-dark); transform:translateY(-1px); }
 .btn-primary:disabled { opacity:.5; cursor:not-allowed; transform:none; }
 .btn-ghost { background:rgba(51,65,85,.5); color:var(--text-sub); border:1px solid var(--card-border); }
 .btn-ghost:hover { color:var(--indigo-light); }
+.btn-danger { background:rgba(239,68,68,.15); color:#f87171; border:1px solid rgba(239,68,68,.3); }
+.btn-danger:hover { background:rgba(239,68,68,.3); }
+.btn-sm { padding:6px 12px; border-radius:10px; font-size:12px; }
 #status {
   margin-top:16px; padding:12px 16px; border-radius:12px; font-size:13px; font-weight:600;
-  background:rgba(51,65,85,.4); color:var(--text-mute); display:none;
+  background:rgba(51,65,85,.4); color:var(--text-mute); display:none; white-space:pre-wrap;
 }
 #status.ok { color:#4ade80; display:block; }
 #status.err { color:#f87171; display:block; }
 #status.info { color:var(--text-sub); display:block; }
-#result { display:none; margin-top:20px; }
-#result.show { display:block; }
-#result img {
-  width:100%; max-height:280px; object-fit:contain; border-radius:14px;
-  border:1px solid var(--card-border); background:rgba(2,6,23,.6);
+.list-item {
+  display:flex; align-items:center; gap:14px; padding:14px 4px;
+  border-bottom:1px solid rgba(255,255,255,.06);
 }
-.linkbox {
-  display:flex; gap:8px; margin-top:12px;
+.list-item:last-child { border-bottom:none; }
+.list-main { flex:1; min-width:0; }
+.list-main h4 { font-size:15px; font-weight:800; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.list-main p { font-size:12px; color:var(--text-mute); margin-top:4px; font-weight:600; }
+.badge {
+  display:inline-block; padding:2px 8px; border-radius:999px; font-size:11px; font-weight:700;
+  background:rgba(99,102,241,.15); color:var(--indigo-light); margin-right:6px;
 }
-.linkbox input {
-  flex:1; padding:10px 14px; border-radius:10px; border:1px solid var(--card-border);
+.badge.draft { background:rgba(168,85,247,.15); color:#e9d5ff; }
+.badge.date { background:rgba(51,65,85,.5); color:var(--text-mute); }
+.list-actions { display:flex; gap:8px; flex-shrink:0; }
+.field { margin-bottom:14px; }
+.field label { display:block; font-size:12px; font-weight:700; color:var(--text-mute);
+  margin-bottom:6px; letter-spacing:.05em; }
+.field input, .field textarea, .field select {
+  width:100%; padding:11px 14px; border-radius:12px; border:1px solid var(--card-border);
   background:rgba(2,6,23,.6); color:var(--text-sub); font-size:13px; outline:none;
-  font-family:monospace;
+  font-family:inherit; transition:border-color .2s;
 }
-.linkbox button {
-  padding:0 18px; border:none; border-radius:10px; cursor:pointer;
-  background:var(--indigo); color:#fff; font-weight:700; font-family:inherit;
+.field input:focus, .field textarea:focus { border-color:rgba(129,140,248,.5); }
+.field textarea { resize:vertical; line-height:1.7; }
+.field textarea.code { font-family:Consolas,Menlo,monospace; font-size:12px; line-height:1.6; }
+.field-grid { display:grid; grid-template-columns:1fr 1fr; gap:0 14px; }
+.field-check { display:flex; align-items:center; gap:8px; }
+.field-check input { width:auto; }
+.field-check label { margin:0; color:var(--text-sub); }
+.empty { color:var(--text-mute); font-size:13px; text-align:center; padding:24px 0; font-weight:600; }
+#picbedPanel .drop {
+  border:2px dashed rgba(129,140,248,.4); border-radius:16px;
+  padding:36px 20px; text-align:center; cursor:pointer;
+  transition:all .25s; background:rgba(99,102,241,.05);
 }
-.linkbox button:hover { background:var(--indigo-dark); }
-@media (max-width:480px){ body{padding:24px 12px;} }
+#picbedPanel .drop:hover, #picbedPanel .drop.drag { border-color:var(--indigo-light); background:rgba(99,102,241,.12); }
+#picbedPanel .drop .big { font-size:36px; margin-bottom:10px; }
+#picbedPanel .drop p { color:var(--text-mute); font-size:13px; font-weight:600; }
+#picbedPanel .drop p b { color:var(--indigo-light); }
+#fileInput { display:none; }
+#result { display:none; margin-top:16px; }
+#result.show { display:block; }
+#result img { width:100%; max-height:260px; object-fit:contain; border-radius:14px;
+  border:1px solid var(--card-border); background:rgba(2,6,23,.6); }
+.linkbox { display:flex; gap:8px; margin-top:10px; }
+.linkbox input { flex:1; padding:10px 14px; border-radius:10px; border:1px solid var(--card-border);
+  background:rgba(2,6,23,.6); color:var(--text-sub); font-size:12px; outline:none; font-family:monospace; }
+.linkbox button { padding:0 18px; border:none; border-radius:10px; cursor:pointer;
+  background:var(--indigo); color:#fff; font-weight:700; font-family:inherit; }
+@media (max-width:560px){ body{padding:24px 12px;} .field-grid{grid-template-columns:1fr;} .list-item{flex-wrap:wrap;} }
 </style>
 </head>
 <body>
-<h1>AstroBlog 图床</h1>
-<p class="sub">图片直传 Cloudflare R2 · 复制链接即可使用</p>
+<h1>AstroBlog 管理台</h1>
+<p class="sub">内容直写仓库 · 构建后生效 · 修改前建议先 Git 提交</p>
 
-<div class="card">
-  <div class="drop" id="dropZone">
-    <div class="big">🖼️</div>
-    <p>点击选择或拖拽图片到此处<br><b>JPG / PNG / GIF / WebP / SVG / AVIF</b> · 最大 10MB</p>
-  </div>
-  <input type="file" id="fileInput" accept="image/*">
-  <div class="row">
-    <button class="btn btn-ghost" id="testBtn">测试连接</button>
-    <button class="btn btn-primary" id="uploadBtn" disabled>上传图片</button>
-  </div>
-  <div id="status"></div>
-  <div id="result">
-    <img id="preview" alt="preview">
-    <div class="linkbox">
-      <input id="url" readonly>
-      <button id="copyBtn">复制</button>
+<div class="wrap">
+  <nav class="tabs" id="tabs">
+    <button data-tab="posts" class="active">📝 文章</button>
+    <button data-tab="moments">💬 说说</button>
+    <button data-tab="friends">🤝 友链</button>
+    <button data-tab="projects">🚀 项目</button>
+    <button data-tab="albums">📸 相册</button>
+    <button data-tab="picbed">🖼️ 图床</button>
+  </nav>
+
+  <section class="panel show" id="panel-posts">
+    <div class="card" id="postListCard">
+      <div class="card-head">
+        <h2>文章列表</h2>
+        <button class="btn btn-primary btn-sm" onclick="newPost()">＋ 新建文章</button>
+      </div>
+      <div id="postList"><div class="empty">加载中…</div></div>
     </div>
-  </div>
+    <div class="card" id="postEditorCard" style="display:none">
+      <div class="card-head"><h2 id="postEditorTitle">编辑文章</h2>
+        <button class="btn btn-ghost btn-sm" onclick="backToPosts()">← 返回列表</button></div>
+      <div id="postEditor"></div>
+    </div>
+  </section>
+
+  <section class="panel" id="panel-moments">
+    <div class="card" id="momentListCard">
+      <div class="card-head">
+        <h2>说说列表</h2>
+        <button class="btn btn-primary btn-sm" onclick="newMoment()">＋ 新建说说</button>
+      </div>
+      <div id="momentList"><div class="empty">加载中…</div></div>
+    </div>
+    <div class="card" id="momentEditorCard" style="display:none">
+      <div class="card-head"><h2 id="momentEditorTitle">编辑说说</h2>
+        <button class="btn btn-ghost btn-sm" onclick="backToMoments()">← 返回列表</button></div>
+      <div id="momentEditor"></div>
+    </div>
+  </section>
+
+  <section class="panel" id="panel-friends">
+    <div class="card">
+      <div class="card-head"><h2>友链数据</h2>
+        <button class="btn btn-ghost btn-sm" onclick="loadDataTab('friends')">↻ 重新读取</button></div>
+      <p class="sub" style="margin-bottom:12px">编辑下方 JSON 数组，保存后覆盖 <code>src/data/friends.ts</code></p>
+      <textarea class="field code" id="friendsJson" rows="12" style="width:100%;border-radius:12px;border:1px solid var(--card-border);background:rgba(2,6,23,.6);color:var(--text-sub);font-family:Consolas,Menlo,monospace;font-size:12px;line-height:1.6;padding:11px 14px;resize:vertical;outline:none"></textarea>
+      <div class="row"><button class="btn btn-primary" onclick="saveDataTab('friends')">保存友链</button></div>
+    </div>
+  </section>
+
+  <section class="panel" id="panel-projects">
+    <div class="card">
+      <div class="card-head"><h2>项目数据</h2>
+        <button class="btn btn-ghost btn-sm" onclick="loadDataTab('projects')">↻ 重新读取</button></div>
+      <p class="sub" style="margin-bottom:12px">编辑下方 JSON 数组，保存后覆盖 <code>src/data/projects.ts</code></p>
+      <textarea class="field code" id="projectsJson" rows="12" style="width:100%;border-radius:12px;border:1px solid var(--card-border);background:rgba(2,6,23,.6);color:var(--text-sub);font-family:Consolas,Menlo,monospace;font-size:12px;line-height:1.6;padding:11px 14px;resize:vertical;outline:none"></textarea>
+      <div class="row"><button class="btn btn-primary" onclick="saveDataTab('projects')">保存项目</button></div>
+    </div>
+  </section>
+
+  <section class="panel" id="panel-albums">
+    <div class="card">
+      <div class="card-head"><h2>相册数据</h2>
+        <button class="btn btn-ghost btn-sm" onclick="loadDataTab('albums')">↻ 重新读取</button></div>
+      <p class="sub" style="margin-bottom:12px">编辑下方 JSON 数组，保存后覆盖 <code>src/data/albums.ts</code></p>
+      <textarea class="field code" id="albumsJson" rows="12" style="width:100%;border-radius:12px;border:1px solid var(--card-border);background:rgba(2,6,23,.6);color:var(--text-sub);font-family:Consolas,Menlo,monospace;font-size:12px;line-height:1.6;padding:11px 14px;resize:vertical;outline:none"></textarea>
+      <div class="row"><button class="btn btn-primary" onclick="saveDataTab('albums')">保存相册</button></div>
+    </div>
+  </section>
+
+  <section class="panel" id="panel-picbed">
+    <div class="card">
+      <div class="card-head"><h2>R2 图床</h2></div>
+      <div class="drop" id="dropZone">
+        <div class="big">🖼️</div>
+        <p>点击选择或拖拽图片到此处<br><b>JPG / PNG / GIF / WebP / SVG / AVIF</b> · 最大 10MB</p>
+      </div>
+      <input type="file" id="fileInput" accept="image/*">
+      <div class="row">
+        <button class="btn btn-ghost" id="testBtn">测试连接</button>
+        <button class="btn btn-primary" id="uploadBtn" disabled>上传图片</button>
+      </div>
+      <div id="result">
+        <img id="preview" alt="preview">
+        <div class="linkbox">
+          <input id="url" readonly>
+          <button id="copyBtn">复制</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div id="status"></div>
 </div>
 
-<script>
-var file = null;
-var drop = document.getElementById('dropZone');
-var input = document.getElementById('fileInput');
-var uploadBtn = document.getElementById('uploadBtn');
-var statusEl = document.getElementById('status');
-var resultEl = document.getElementById('result');
-
-function setStatus(msg, cls) {
-  statusEl.className = cls || 'info';
-  statusEl.textContent = msg;
-  statusEl.style.display = 'block';
-}
-function pick(f) {
-  if (!f) return;
-  if (!/^image\//.test(f.type)) { setStatus('仅支持图片文件', 'err'); return; }
-  if (f.size > 10 * 1024 * 1024) { setStatus('图片超过 10MB 限制', 'err'); return; }
-  file = f;
-  uploadBtn.disabled = false;
-  setStatus('已选择: ' + f.name + ' (' + (f.size / 1024).toFixed(0) + ' KB)', 'info');
-  resultEl.classList.remove('show');
-}
-drop.addEventListener('click', function () { input.click(); });
-input.addEventListener('change', function () { pick(input.files[0]); });
-drop.addEventListener('dragover', function (e) { e.preventDefault(); drop.classList.add('drag'); });
-drop.addEventListener('dragleave', function () { drop.classList.remove('drag'); });
-drop.addEventListener('drop', function (e) {
-  e.preventDefault(); drop.classList.remove('drag');
-  pick(e.dataTransfer.files[0]);
-});
-
-document.getElementById('testBtn').addEventListener('click', function () {
-  setStatus('正在测试 R2 连接...', 'info');
-  fetch('/api/picbed/test')
-    .then(function (r) { return r.json(); })
-    .then(function (d) {
-      setStatus(d.message, d.success ? 'ok' : 'err');
-    })
-    .catch(function () { setStatus('网络异常，无法连接后端', 'err'); });
-});
-
-uploadBtn.addEventListener('click', function () {
-  if (!file) return;
-  uploadBtn.disabled = true;
-  setStatus('正在上传...', 'info');
-  var fd = new FormData();
-  fd.append('file', file);
-  var xhr = new XMLHttpRequest();
-  xhr.open('POST', '/api/picbed/upload');
-  xhr.onload = function () {
-    uploadBtn.disabled = false;
-    try {
-      var d = JSON.parse(xhr.responseText);
-      if (d.success) {
-        setStatus('上传成功 ✓', 'ok');
-        document.getElementById('preview').src = d.url;
-        document.getElementById('url').value = d.url;
-        resultEl.classList.add('show');
-      } else {
-        setStatus(d.message, 'err');
-      }
-    } catch (e) { setStatus('响应解析失败', 'err'); }
-  };
-  xhr.onerror = function () {
-    uploadBtn.disabled = false;
-    setStatus('上传请求失败，检查后端是否运行', 'err');
-  };
-  xhr.send(fd);
-});
-
-document.getElementById('copyBtn').addEventListener('click', function () {
-  var u = document.getElementById('url');
-  u.select();
-  if (navigator.clipboard) navigator.clipboard.writeText(u.value);
-  setStatus('链接已复制到剪贴板 ✓', 'ok');
-});
-</script>
+<script src="/admin.js"></script>
 </body>
 </html>
