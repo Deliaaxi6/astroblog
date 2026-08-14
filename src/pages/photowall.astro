@@ -1,0 +1,480 @@
+---
+import Layout from '../layouts/Layout.astro';
+import { albums } from '../data/albums';
+---
+
+<Layout title="光影画廊 · 照片墙" description="定格时间，封存每一次心跳。">
+	<section class="page-head">
+		<div>
+			<h1>光影画廊</h1>
+			<p class="page-sub">定格时间，封存泰拉与现实的每一次心跳</p>
+		</div>
+		<div class="search-wrap">
+			<input id="searchInput" type="text" placeholder="搜索相册名或照片描述..." />
+		</div>
+	</section>
+
+	<div id="albumView" class="al-grid">
+		{
+			albums.map((album, i) => (
+				<button class="al-card" data-id={album.id} data-search={`${album.title} ${album.description}`.toLowerCase()}>
+					<div class="al-stack">
+						<div class="al-photo al-back">
+							{album.photos[2] && <img src={album.photos[2].url} alt="" loading="lazy" />}
+						</div>
+						<div class="al-photo al-mid">
+							{album.photos[1] && <img src={album.photos[1].url} alt="" loading="lazy" />}
+						</div>
+						<div class="al-photo al-front">
+							<img src={album.cover} alt={album.title} loading="lazy" />
+							<span class="al-count">{album.photos.length} 张照片</span>
+						</div>
+					</div>
+					<div class="al-meta">
+						<h2>{album.title}</h2>
+						<span class="al-date">{album.date}</span>
+						<p>{album.description}</p>
+					</div>
+				</button>
+			))
+		}
+	</div>
+
+	<div id="albumDetail" class="al-detail" hidden>
+		<button id="backBtn" class="al-back-btn">← 返回画廊</button>
+		<div class="al-detail-head">
+			<h1 id="detailTitle"></h1>
+			<p id="detailDesc"></p>
+			<span id="detailCount" class="al-count-badge"></span>
+		</div>
+		<div id="photoWall" class="pw-columns"></div>
+	</div>
+
+	<div id="lightbox" class="lightbox" hidden>
+		<button id="lbClose" class="lb-close">✕</button>
+		<button id="lbPrev" class="lb-nav lb-prev">‹</button>
+		<img id="lbImg" alt="全屏照片" />
+		<button id="lbNext" class="lb-nav lb-next">›</button>
+		<span id="lbCaption" class="lb-caption"></span>
+	</div>
+</Layout>
+
+<style>
+	.page-head {
+		display: flex;
+		flex-direction: column;
+		gap: 18px;
+		margin: 16px 0 44px;
+	}
+	@media (min-width: 768px) {
+		.page-head {
+			flex-direction: row;
+			justify-content: space-between;
+			align-items: flex-end;
+		}
+	}
+	.page-head h1 {
+		font-size: 34px;
+		font-weight: 900;
+		letter-spacing: 0.1em;
+		background: linear-gradient(120deg, var(--text-main), var(--indigo-light));
+		-webkit-background-clip: text;
+		background-clip: text;
+		color: transparent;
+	}
+	.page-sub {
+		color: var(--text-mute);
+		font-size: 14px;
+		margin-top: 6px;
+	}
+	.search-wrap input {
+		width: 280px;
+		max-width: 80vw;
+		padding: 12px 20px 12px 42px;
+		border-radius: 999px;
+		border: 1px solid var(--card-border);
+		background: var(--card-bg);
+		backdrop-filter: var(--blur);
+		color: var(--text-main);
+		font-size: 13px;
+		outline: none;
+		transition: box-shadow 0.3s, border-color 0.3s;
+		background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2394a3b8'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z'/%3E%3C/svg%3E");
+		background-repeat: no-repeat;
+		background-position: 16px center;
+		background-size: 18px;
+	}
+	.search-wrap input:focus {
+		border-color: var(--indigo-light);
+		box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
+	}
+	.al-grid {
+		display: grid;
+		grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+		gap: 40px 28px;
+	}
+	.al-card {
+		background: none;
+		border: none;
+		padding: 0;
+		cursor: pointer;
+		font-family: inherit;
+		text-align: center;
+	}
+	.al-stack {
+		position: relative;
+		width: 85%;
+		margin: 0 auto 24px;
+		aspect-ratio: 4 / 3;
+	}
+	.al-photo {
+		position: absolute;
+		inset: 0;
+		overflow: hidden;
+		border-radius: 4px;
+		border: 5px solid var(--card-bg);
+		transition: transform 0.5s;
+	}
+	.al-photo img {
+		width: 100%;
+		height: 100%;
+		object-fit: cover;
+		transition: transform 0.6s;
+	}
+	.al-back {
+		transform: rotate(6deg) translate(14px, 8px);
+		opacity: 0.55;
+		filter: blur(2px) grayscale(1);
+	}
+	.al-mid {
+		transform: rotate(-3deg) translate(-8px, -4px);
+		opacity: 0.8;
+		filter: grayscale(0.5);
+		z-index: 1;
+	}
+	.al-front {
+		z-index: 2;
+		box-shadow: 0 18px 40px -10px rgba(0, 0, 0, 0.45);
+	}
+	.al-card:hover .al-back {
+		transform: rotate(12deg) translate(28px, 8px);
+	}
+	.al-card:hover .al-mid {
+		transform: rotate(-6deg) translate(-20px, -4px);
+	}
+	.al-card:hover .al-front {
+		transform: translateY(-8px) scale(1.04);
+	}
+	.al-front img {
+		filter: none;
+	}
+	.al-count {
+		position: absolute;
+		left: 12px;
+		bottom: 12px;
+		background: rgba(0, 0, 0, 0.65);
+		backdrop-filter: blur(6px);
+		color: #fff;
+		font-size: 12px;
+		font-weight: 800;
+		padding: 5px 12px;
+		border-radius: 999px;
+		opacity: 0;
+		transform: translateY(8px);
+		transition: all 0.4s;
+	}
+	.al-card:hover .al-count {
+		opacity: 1;
+		transform: translateY(0);
+	}
+	.al-meta h2 {
+		font-size: 18px;
+		font-weight: 800;
+		color: var(--text-main);
+		transition: color 0.3s;
+	}
+	.al-card:hover .al-meta h2 {
+		color: var(--indigo-light);
+	}
+	.al-date {
+		font-size: 11px;
+		font-weight: 700;
+		letter-spacing: 0.1em;
+		color: var(--text-mute);
+		background: var(--card-bg);
+		border-radius: 4px;
+		padding: 2px 8px;
+		display: inline-block;
+		margin: 6px 0;
+	}
+	.al-meta p {
+		font-size: 13px;
+		color: var(--text-sub);
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
+	}
+	.al-back-btn {
+		background: var(--card-bg);
+		backdrop-filter: var(--blur);
+		border: 1px solid var(--card-border);
+		color: var(--text-sub);
+		padding: 9px 20px;
+		border-radius: 12px;
+		cursor: pointer;
+		font-size: 13px;
+		font-weight: 700;
+		font-family: inherit;
+		margin-bottom: 24px;
+		transition: all 0.3s;
+	}
+	.al-back-btn:hover {
+		color: var(--indigo-light);
+		border-color: var(--indigo-light);
+	}
+	.al-detail-head {
+		border-bottom: 1px solid var(--card-border);
+		padding-bottom: 18px;
+		margin-bottom: 28px;
+		display: flex;
+		align-items: baseline;
+		gap: 14px;
+		flex-wrap: wrap;
+	}
+	.al-detail-head h1 {
+		font-size: 30px;
+		font-weight: 900;
+		letter-spacing: 0.05em;
+	}
+	.al-detail-head p {
+		color: var(--text-mute);
+		font-size: 14px;
+	}
+	.al-count-badge {
+		margin-left: auto;
+		font-size: 13px;
+		font-weight: 800;
+		color: var(--indigo-light);
+		background: rgba(99, 102, 241, 0.1);
+		padding: 7px 16px;
+		border-radius: 999px;
+		border: 1px solid rgba(99, 102, 241, 0.25);
+	}
+	.pw-columns {
+		columns: 2;
+		column-gap: 18px;
+	}
+	@media (min-width: 640px) {
+		.pw-columns {
+			columns: 3;
+		}
+	}
+	@media (min-width: 900px) {
+		.pw-columns {
+			columns: 4;
+		}
+	}
+	.pw-item {
+		position: relative;
+		break-inside: avoid;
+		margin-bottom: 18px;
+		border-radius: 14px;
+		overflow: hidden;
+		cursor: zoom-in;
+		border: 1px solid var(--card-border);
+		background: var(--card-bg);
+		transition: transform 0.3s, box-shadow 0.3s;
+	}
+	.pw-item:hover {
+		transform: scale(1.015);
+		box-shadow: 0 16px 32px -12px rgba(99, 102, 241, 0.35);
+	}
+	.pw-item img {
+		width: 100%;
+		height: auto;
+		display: block;
+		transition: transform 0.5s;
+	}
+	.pw-item:hover img {
+		transform: scale(1.05);
+	}
+	.pw-item figcaption {
+		position: absolute;
+		left: 0;
+		right: 0;
+		bottom: 0;
+		padding: 28px 14px 12px;
+		background: linear-gradient(to top, rgba(0, 0, 0, 0.7), transparent);
+		color: #fff;
+		font-size: 13px;
+		font-weight: 600;
+		opacity: 0;
+		transform: translateY(10px);
+		transition: all 0.4s;
+		pointer-events: none;
+	}
+	.pw-item:hover figcaption {
+		opacity: 1;
+		transform: translateY(0);
+	}
+	.lightbox {
+		position: fixed;
+		inset: 0;
+		z-index: 9999;
+		background: rgba(2, 6, 23, 0.97);
+		backdrop-filter: blur(16px);
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		cursor: zoom-out;
+	}
+	.lightbox[hidden] {
+		display: none;
+	}
+	.lightbox img {
+		max-width: 92vw;
+		max-height: 84vh;
+		object-fit: contain;
+		border-radius: 12px;
+		box-shadow: 0 0 80px rgba(0, 0, 0, 0.6);
+	}
+	.lb-close,
+	.lb-nav {
+		position: absolute;
+		background: rgba(255, 255, 255, 0.1);
+		border: 1px solid rgba(255, 255, 255, 0.1);
+		color: #fff;
+		border-radius: 50%;
+		cursor: pointer;
+		transition: background 0.3s;
+	}
+	.lb-close:hover,
+	.lb-nav:hover {
+		background: rgba(255, 255, 255, 0.25);
+	}
+	.lb-close {
+		top: 24px;
+		right: 24px;
+		width: 44px;
+		height: 44px;
+		font-size: 16px;
+	}
+	.lb-nav {
+		top: 50%;
+		transform: translateY(-50%);
+		width: 52px;
+		height: 52px;
+		font-size: 28px;
+		line-height: 1;
+	}
+	.lb-prev {
+		left: 20px;
+	}
+	.lb-next {
+		right: 20px;
+	}
+	.lb-caption {
+		position: absolute;
+		bottom: 36px;
+		padding: 8px 22px;
+		border-radius: 999px;
+		background: rgba(255, 255, 255, 0.1);
+		border: 1px solid rgba(255, 255, 255, 0.1);
+		color: rgba(255, 255, 255, 0.9);
+		font-size: 13px;
+		font-weight: 600;
+		backdrop-filter: blur(8px);
+	}
+</style>
+
+<script define:vars={{ albums }}>
+	const albumView = document.getElementById('albumView');
+	const albumDetail = document.getElementById('albumDetail');
+	const photoWall = document.getElementById('photoWall');
+	const searchInput = document.getElementById('searchInput');
+	const lightbox = document.getElementById('lightbox');
+	const lbImg = document.getElementById('lbImg');
+	const lbCaption = document.getElementById('lbCaption');
+	let currentPhotos = [];
+	let lbIndex = 0;
+
+	const esc = (s) =>
+		String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+	function openAlbum(id) {
+		const album = albums.find((a) => a.id === id);
+		if (!album) return;
+		currentPhotos = album.photos;
+		document.getElementById('detailTitle').textContent = album.title;
+		document.getElementById('detailDesc').textContent = album.description;
+		document.getElementById('detailCount').textContent = `共 ${album.photos.length} 瞬间`;
+		photoWall.innerHTML = album.photos
+			.map(
+				(p, i) =>
+					`<figure class="pw-item" data-index="${i}"><img src="${esc(p.url)}" alt="${esc(p.caption || '照片')}" loading="lazy" />${
+						p.caption ? `<figcaption>${esc(p.caption)}</figcaption>` : ''
+					}</figure>`
+			)
+			.join('');
+		albumView.hidden = true;
+		albumDetail.hidden = false;
+		window.scrollTo({ top: 0 });
+	}
+
+	function closeAlbum() {
+		albumDetail.hidden = true;
+		albumView.hidden = false;
+	}
+
+	function openLightbox(index) {
+		lbIndex = index;
+		const p = currentPhotos[index];
+		if (!p) return;
+		lbImg.src = p.url;
+		lbImg.alt = p.caption || '照片';
+		lbCaption.textContent = p.caption || '';
+		lbCaption.hidden = !p.caption;
+		lightbox.hidden = false;
+	}
+
+	function closeLightbox() {
+		lightbox.hidden = true;
+	}
+
+	document.querySelectorAll('.al-card').forEach((card) => {
+		card.addEventListener('click', () => openAlbum(card.dataset.id));
+	});
+	document.getElementById('backBtn').addEventListener('click', closeAlbum);
+	document.getElementById('lbClose').addEventListener('click', closeLightbox);
+	lightbox.addEventListener('click', (e) => {
+		if (e.target === lightbox || e.target === lbImg) closeLightbox();
+	});
+	document.getElementById('lbPrev').addEventListener('click', (e) => {
+		e.stopPropagation();
+		openLightbox((lbIndex - 1 + currentPhotos.length) % currentPhotos.length);
+	});
+	document.getElementById('lbNext').addEventListener('click', (e) => {
+		e.stopPropagation();
+		openLightbox((lbIndex + 1) % currentPhotos.length);
+	});
+	photoWall.addEventListener('click', (e) => {
+		const item = e.target.closest('.pw-item');
+		if (item) openLightbox(Number(item.dataset.index));
+	});
+	document.addEventListener('keydown', (e) => {
+		if (lightbox.hidden) return;
+		if (e.key === 'Escape') closeLightbox();
+		if (e.key === 'ArrowLeft') openLightbox((lbIndex - 1 + currentPhotos.length) % currentPhotos.length);
+		if (e.key === 'ArrowRight') openLightbox((lbIndex + 1) % currentPhotos.length);
+	});
+
+	searchInput?.addEventListener('input', () => {
+		const q = searchInput.value.trim().toLowerCase();
+		let visible = 0;
+		document.querySelectorAll('.al-card').forEach((card) => {
+			const hit = !q || card.dataset.search.includes(q);
+			card.hidden = !hit;
+			if (hit) visible++;
+		});
+	});
+</script>

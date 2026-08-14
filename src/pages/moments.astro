@@ -1,0 +1,476 @@
+---
+import { getCollection } from 'astro:content';
+import Layout from '../layouts/Layout.astro';
+
+const moments = (await getCollection('moments')).sort(
+	(a, b) => b.data.date.valueOf() - a.data.date.valueOf()
+);
+
+const authorName = '我的博客';
+const avatar = 'https://bu.dusays.com/2026/03/24/69c1e38b4c370.jpg';
+
+const formatter = new Intl.DateTimeFormat('zh-CN', {
+	year: 'numeric',
+	month: '2-digit',
+	day: '2-digit',
+});
+---
+
+<Layout title="生活动态 · 说说" description="在代码之外捕捉瞬间的温度。">
+	<section class="page-head">
+		<h1>生活动态</h1>
+		<p class="page-sub">✨ “ 在代码之外捕捉瞬间的温度 ”</p>
+	</section>
+
+	<div class="mm-toolbar">
+		<div class="search-wrap">
+			<input id="searchInput" type="text" placeholder="搜寻被遗忘的记忆..." />
+		</div>
+		<div class="sort-wrap">
+			<button id="sortDesc" class="sort-btn active">▼ 最新</button>
+			<button id="sortAsc" class="sort-btn">▲ 最早</button>
+		</div>
+	</div>
+
+	<div class="mm-columns" id="mmColumns">
+		{
+			moments.map((moment) => (
+				<article class="mm-card glass" data-date={moment.data.date.toISOString()}>
+					<header class="mm-head">
+						<div class="mm-avatar">
+							<img src={avatar} alt={authorName} />
+						</div>
+						<div>
+							<h3>{authorName}</h3>
+							<span class="mm-time">{formatter.format(moment.data.date)}</span>
+						</div>
+					</header>
+					<p class="mm-content">{moment.body.trim()}</p>
+					{
+						moment.data.images && moment.data.images.length > 0 && (
+							<div class:list={['mm-images', `mm-n${Math.min(moment.data.images.length, 9)}`]}>
+								{moment.data.images.slice(0, 9).map((src, i) => (
+									<button
+										class="mm-img"
+										style={`background-image: url('${src}')`}
+										aria-label="查看图片"
+									>
+										{
+											i === 8 &&
+												moment.data.images.length > 9 && (
+													<span class="mm-more">+{moment.data.images.length - 9}</span>
+												)
+										}
+									</button>
+								))}
+							</div>
+						)
+					}
+					{
+						moment.data.location && <span class="mm-loc">📍 {moment.data.location}</span>
+					}
+				</article>
+			))
+		}
+	</div>
+	<div id="mmEmpty" class="mm-empty" hidden>
+		<h2>没找到相关记忆</h2>
+		<p>尝试精简你的搜索词，或者换个心情再次出发。</p>
+	</div>
+
+	<div id="lightbox" class="lightbox" hidden>
+		<button id="lbClose" class="lb-close">✕</button>
+		<button id="lbPrev" class="lb-nav lb-prev">‹</button>
+		<img id="lbImg" alt="全屏照片" />
+		<button id="lbNext" class="lb-nav lb-next">›</button>
+	</div>
+</Layout>
+
+<style>
+	.page-head {
+		text-align: center;
+		margin: 16px 0 32px;
+	}
+	.page-head h1 {
+		font-size: 34px;
+		font-weight: 900;
+		letter-spacing: 0.1em;
+		background: linear-gradient(120deg, var(--text-main), var(--indigo-light));
+		-webkit-background-clip: text;
+		background-clip: text;
+		color: transparent;
+	}
+	.page-sub {
+		color: var(--text-mute);
+		font-size: 14px;
+		margin-top: 8px;
+	}
+	.mm-toolbar {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		gap: 14px;
+		margin-bottom: 36px;
+	}
+	@media (min-width: 640px) {
+		.mm-toolbar {
+			flex-direction: row;
+			justify-content: center;
+			gap: 20px;
+		}
+	}
+	.search-wrap {
+		position: relative;
+		width: 100%;
+		max-width: 420px;
+	}
+	.search-wrap input {
+		width: 100%;
+		padding: 12px 20px 12px 42px;
+		border-radius: 14px;
+		border: 1px solid var(--card-border);
+		background: var(--card-bg);
+		backdrop-filter: var(--blur);
+		color: var(--text-main);
+		font-size: 13px;
+		outline: none;
+		transition: box-shadow 0.3s, border-color 0.3s;
+		background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2394a3b8'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z'/%3E%3C/svg%3E");
+		background-repeat: no-repeat;
+		background-position: 14px center;
+		background-size: 18px;
+	}
+	.search-wrap input:focus {
+		border-color: var(--indigo-light);
+		box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
+	}
+	.sort-wrap {
+		display: flex;
+		gap: 6px;
+		background: var(--card-bg);
+		border: 1px solid var(--card-border);
+		backdrop-filter: var(--blur);
+		padding: 5px;
+		border-radius: 14px;
+	}
+	.sort-btn {
+		border: none;
+		background: none;
+		color: var(--text-mute);
+		font-size: 12px;
+		font-weight: 800;
+		padding: 8px 18px;
+		border-radius: 10px;
+		cursor: pointer;
+		font-family: inherit;
+		transition: all 0.3s;
+	}
+	.sort-btn.active {
+		background: var(--indigo);
+		color: #fff;
+		box-shadow: 0 6px 14px -4px rgba(99, 102, 241, 0.5);
+	}
+	.sort-btn:not(.active):hover {
+		color: var(--indigo-light);
+	}
+	.mm-columns {
+		columns: 1;
+		column-gap: 24px;
+	}
+	@media (min-width: 768px) {
+		.mm-columns {
+			columns: 2;
+		}
+	}
+	.mm-card {
+		break-inside: avoid;
+		margin-bottom: 24px;
+		padding: 24px;
+		border-radius: 22px;
+		transition: box-shadow 0.3s, transform 0.3s;
+	}
+	.mm-card:hover {
+		box-shadow: 0 20px 40px -14px rgba(99, 102, 241, 0.3);
+		transform: translateY(-2px);
+	}
+	.mm-head {
+		display: flex;
+		align-items: center;
+		gap: 12px;
+		padding-bottom: 16px;
+		margin-bottom: 14px;
+		border-bottom: 1px solid var(--card-border);
+	}
+	.mm-avatar {
+		width: 44px;
+		height: 44px;
+		border-radius: 14px;
+		overflow: hidden;
+		border: 2px solid var(--card-border);
+		flex-shrink: 0;
+	}
+	.mm-avatar img {
+		width: 100%;
+		height: 100%;
+		object-fit: cover;
+	}
+	.mm-head h3 {
+		font-size: 15px;
+		font-weight: 900;
+		color: var(--indigo-light);
+		letter-spacing: 0.05em;
+	}
+	.mm-time {
+		font-size: 11px;
+		color: var(--text-mute);
+		font-weight: 600;
+	}
+	.mm-content {
+		font-size: 14px;
+		line-height: 1.8;
+		color: var(--text-main);
+		white-space: pre-wrap;
+		word-break: break-word;
+		margin-bottom: 16px;
+	}
+	.mm-images {
+		display: grid;
+		gap: 6px;
+		margin-bottom: 16px;
+	}
+	.mm-n1 {
+		grid-template-columns: 1fr;
+		max-width: 260px;
+	}
+	.mm-n2,
+	.mm-n3 {
+		grid-template-columns: repeat(3, 1fr);
+		max-width: 300px;
+	}
+	.mm-n4,
+	.mm-n5,
+	.mm-n6 {
+		grid-template-columns: repeat(3, 1fr);
+	}
+	.mm-n7,
+	.mm-n8,
+	.mm-n9 {
+		grid-template-columns: repeat(3, 1fr);
+	}
+	.mm-img {
+		position: relative;
+		aspect-ratio: 1;
+		border: none;
+		padding: 0;
+		border-radius: 10px;
+		overflow: hidden;
+		cursor: zoom-in;
+		background-size: cover;
+		background-position: center;
+		transition: transform 0.3s;
+	}
+	.mm-img:hover {
+		transform: scale(1.03);
+	}
+	.mm-more {
+		position: absolute;
+		inset: 0;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		background: rgba(0, 0, 0, 0.6);
+		backdrop-filter: blur(2px);
+		color: #fff;
+		font-size: 20px;
+		font-weight: 900;
+	}
+	.mm-loc {
+		display: inline-flex;
+		align-items: center;
+		gap: 6px;
+		font-size: 11px;
+		font-weight: 700;
+		color: var(--indigo-light);
+		background: rgba(99, 102, 241, 0.1);
+		border: 1px solid rgba(99, 102, 241, 0.2);
+		padding: 6px 12px;
+		border-radius: 999px;
+		max-width: 100%;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+	.mm-empty {
+		text-align: center;
+		padding: 70px 0;
+		color: var(--text-mute);
+	}
+	.mm-empty h2 {
+		font-size: 22px;
+		color: var(--text-sub);
+		margin-bottom: 8px;
+	}
+	.lightbox {
+		position: fixed;
+		inset: 0;
+		z-index: 9999;
+		background: rgba(2, 6, 23, 0.97);
+		backdrop-filter: blur(16px);
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		cursor: zoom-out;
+	}
+	.lightbox[hidden] {
+		display: none;
+	}
+	.lightbox img {
+		max-width: 92vw;
+		max-height: 86vh;
+		object-fit: contain;
+		border-radius: 12px;
+		box-shadow: 0 0 80px rgba(0, 0, 0, 0.6);
+	}
+	.lb-close,
+	.lb-nav {
+		position: absolute;
+		background: rgba(255, 255, 255, 0.1);
+		border: 1px solid rgba(255, 255, 255, 0.1);
+		color: #fff;
+		border-radius: 50%;
+		cursor: pointer;
+		transition: background 0.3s;
+	}
+	.lb-close:hover,
+	.lb-nav:hover {
+		background: rgba(255, 255, 255, 0.25);
+	}
+	.lb-close {
+		top: 24px;
+		right: 24px;
+		width: 44px;
+		height: 44px;
+		font-size: 16px;
+	}
+	.lb-nav {
+		top: 50%;
+		transform: translateY(-50%);
+		width: 52px;
+		height: 52px;
+		font-size: 28px;
+		line-height: 1;
+	}
+	.lb-prev {
+		left: 20px;
+	}
+	.lb-next {
+		right: 20px;
+	}
+</style>
+
+<script>
+	const searchInput = document.getElementById('searchInput');
+	const mmColumns = document.getElementById('mmColumns');
+	const mmEmpty = document.getElementById('mmEmpty');
+	const lightbox = document.getElementById('lightbox');
+	const lbImg = document.getElementById('lbImg');
+	let order = 'desc';
+	let lightboxImages = [];
+	let lbIndex = 0;
+
+	const esc = (s) =>
+		String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+	function timeAgo(iso) {
+		const diff = Math.floor((Date.now() - new Date(iso).getTime()) / 1000);
+		if (diff < 60) return '刚刚';
+		if (diff < 3600) return `${Math.floor(diff / 60)} 分钟前`;
+		if (diff < 86400) return `${Math.floor(diff / 3600)} 小时前`;
+		const d = new Date(iso);
+		return `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')}`;
+	}
+
+	mmColumns.querySelectorAll('.mm-card').forEach((card) => {
+		const timeEl = card.querySelector('.mm-time');
+		timeEl.textContent = timeAgo(card.dataset.date);
+	});
+
+	function openLightbox(images, index) {
+		lightboxImages = images;
+		lbIndex = index;
+		lbImg.src = images[index];
+		lightbox.hidden = false;
+	}
+
+	function closeLightbox() {
+		lightbox.hidden = true;
+	}
+
+	function step(delta) {
+		lbIndex = (lbIndex + delta + lightboxImages.length) % lightboxImages.length;
+		lbImg.src = lightboxImages[lbIndex];
+	}
+
+	mmColumns.addEventListener('click', (e) => {
+		const img = e.target.closest('.mm-img');
+		if (!img) return;
+		const card = img.closest('.mm-card');
+		const images = Array.from(card.querySelectorAll('.mm-img')).map((el) =>
+			el.style.backgroundImage.slice(5, -2)
+		);
+		openLightbox(images, Array.from(card.querySelectorAll('.mm-img')).indexOf(img));
+	});
+
+	document.getElementById('lbClose').addEventListener('click', closeLightbox);
+	lightbox.addEventListener('click', (e) => {
+		if (e.target === lightbox) closeLightbox();
+	});
+	document.getElementById('lbPrev').addEventListener('click', (e) => {
+		e.stopPropagation();
+		step(-1);
+	});
+	document.getElementById('lbNext').addEventListener('click', (e) => {
+		e.stopPropagation();
+		step(1);
+	});
+	document.addEventListener('keydown', (e) => {
+		if (lightbox.hidden) return;
+		if (e.key === 'Escape') closeLightbox();
+		if (e.key === 'ArrowLeft') step(-1);
+		if (e.key === 'ArrowRight') step(1);
+	});
+
+	function apply() {
+		const q = (searchInput.value || '').trim().toLowerCase();
+		const cards = Array.from(mmColumns.querySelectorAll('.mm-card'));
+		cards.sort((a, b) =>
+			order === 'desc'
+				? new Date(b.dataset.date) - new Date(a.dataset.date)
+				: new Date(a.dataset.date) - new Date(b.dataset.date)
+		);
+		let visible = 0;
+		cards.forEach((card, i) => {
+			const hit = !q || card.textContent.toLowerCase().includes(q);
+			card.hidden = !hit;
+			if (hit) {
+				card.style.order = String(i);
+				visible++;
+			}
+		});
+		mmEmpty.hidden = visible > 0;
+	}
+
+	searchInput?.addEventListener('input', apply);
+	document.getElementById('sortDesc').addEventListener('click', () => {
+		order = 'desc';
+		document.getElementById('sortDesc').classList.add('active');
+		document.getElementById('sortAsc').classList.remove('active');
+		apply();
+	});
+	document.getElementById('sortAsc').addEventListener('click', () => {
+		order = 'asc';
+		document.getElementById('sortAsc').classList.add('active');
+		document.getElementById('sortDesc').classList.remove('active');
+		apply();
+	});
+</script>

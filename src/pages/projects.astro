@@ -1,0 +1,221 @@
+---
+import Layout from '../layouts/Layout.astro';
+import { projectsData } from '../data/projects';
+---
+
+<Layout title="Projects Matrix · 项目" description="开源项目、科研代码与实验室折腾记录。">
+	<section class="page-head">
+		<h1>Projects Matrix</h1>
+		<p class="page-sub">开源项目、科研代码与实验室折腾记录。</p>
+	</section>
+
+	<div class="search-wrap">
+		<input id="searchInput" type="text" placeholder="搜索项目名称、描述或技术栈..." />
+	</div>
+
+	<div class="pj-grid" id="pjGrid">
+		{
+			projectsData.map((project) => (
+				<a
+					href={project.githubUrl}
+					target="_blank"
+					rel="noopener noreferrer"
+					class="pj-card glass"
+					data-search={`${project.name} ${project.description} ${project.tags.join(' ')}`.toLowerCase()}
+				>
+					<div class="pj-glow"></div>
+					<div class="pj-top">
+						<div class="pj-title">
+							<span class="pj-icon">{project.icon}</span>
+							<h2>{project.name}</h2>
+						</div>
+						<svg class="pj-gh" viewBox="0 0 24 24" fill="currentColor">
+							<path fillRule="evenodd" clipRule="evenodd" d="M12 2C6.477 2 2 6.477 2 12c0 4.42 2.865 8.166 6.839 9.489.5.092.682-.217.682-.482 0-.237-.008-.866-.013-1.7-2.782.603-3.369-1.34-3.369-1.34-.454-1.156-1.11-1.462-1.11-1.462-.908-.62.069-.608.069-.608 1.003.07 1.531 1.03 1.531 1.03.892 1.529 2.341 1.087 2.91.831.092-.646.35-1.086.636-1.336-2.22-.253-4.555-1.11-4.555-4.943 0-1.091.39-1.984 1.029-2.683-.103-.253-.446-1.27.098-2.647 0 0 .84-.269 2.75 1.025A9.578 9.578 0 0112 6.836c.85.004 1.705.114 2.504.336 1.909-1.294 2.747-1.025 2.747-1.025.546 1.379.203 2.394.1 2.647.64.699 1.028 1.592 1.028 2.683 0 3.842-2.339 4.687-4.566 4.935.359.309.678.919.678 1.852 0 1.336-.012 2.415-.012 2.743 0 .267.18.578.688.48C19.138 20.161 22 16.418 22 12c0-5.523-4.477-10-10-10z" />
+						</svg>
+					</div>
+					<p class="pj-desc">{project.description}</p>
+					<div class="pj-tags">
+						{project.tags.map((tag) => <span>{tag}</span>)}
+					</div>
+				</a>
+			))
+		}
+	</div>
+	<div id="pjEmpty" class="pj-empty" hidden>云端尚未建立代号为 [<b id="pjQuery"></b>] 的档案...</div>
+</Layout>
+
+<style>
+	.page-head {
+		text-align: center;
+		margin: 16px 0 32px;
+	}
+	.page-head h1 {
+		font-size: 34px;
+		font-weight: 900;
+		letter-spacing: 0.12em;
+		background: linear-gradient(120deg, var(--text-main), var(--indigo-light));
+		-webkit-background-clip: text;
+		background-clip: text;
+		color: transparent;
+	}
+	.page-sub {
+		color: var(--text-mute);
+		font-size: 14px;
+		margin-top: 8px;
+	}
+	.search-wrap {
+		display: flex;
+		justify-content: center;
+		margin-bottom: 36px;
+	}
+	.search-wrap input {
+		width: 100%;
+		max-width: 480px;
+		padding: 13px 22px 13px 44px;
+		border-radius: 999px;
+		border: 1px solid var(--card-border);
+		background: var(--card-bg);
+		backdrop-filter: var(--blur);
+		color: var(--text-main);
+		font-size: 14px;
+		outline: none;
+		transition: box-shadow 0.3s, border-color 0.3s;
+		background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2394a3b8'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z'/%3E%3C/svg%3E");
+		background-repeat: no-repeat;
+		background-position: 16px center;
+		background-size: 18px;
+	}
+	.search-wrap input:focus {
+		border-color: var(--indigo-light);
+		box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
+	}
+	.pj-grid {
+		display: grid;
+		grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+		gap: 22px;
+	}
+	.pj-card {
+		position: relative;
+		overflow: hidden;
+		padding: 26px;
+		border-radius: 24px;
+		text-decoration: none;
+		transition: transform 0.4s, box-shadow 0.4s;
+	}
+	.pj-card:hover {
+		transform: translateY(-3px);
+		box-shadow: 0 20px 40px -12px rgba(99, 102, 241, 0.3);
+	}
+	.pj-glow {
+		position: absolute;
+		top: -40px;
+		right: -40px;
+		width: 120px;
+		height: 120px;
+		border-radius: 50%;
+		background: rgba(99, 102, 241, 0.12);
+		filter: blur(30px);
+		transition: background 0.5s;
+	}
+	.pj-card:hover .pj-glow {
+		background: rgba(99, 102, 241, 0.22);
+	}
+	.pj-top {
+		display: flex;
+		justify-content: space-between;
+		align-items: flex-start;
+		margin-bottom: 16px;
+		position: relative;
+		z-index: 1;
+	}
+	.pj-title {
+		display: flex;
+		align-items: center;
+		gap: 12px;
+		min-width: 0;
+	}
+	.pj-icon {
+		font-size: 30px;
+	}
+	.pj-title h2 {
+		font-size: 19px;
+		font-weight: 800;
+		color: var(--text-main);
+		transition: color 0.3s;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+	.pj-card:hover .pj-title h2 {
+		color: var(--indigo-light);
+	}
+	.pj-gh {
+		width: 28px;
+		height: 28px;
+		flex-shrink: 0;
+		color: var(--text-mute);
+		transition: color 0.3s;
+	}
+	.pj-card:hover .pj-gh {
+		color: var(--text-main);
+	}
+	.pj-desc {
+		font-size: 13px;
+		color: var(--text-sub);
+		line-height: 1.7;
+		margin-bottom: 18px;
+		position: relative;
+		z-index: 1;
+		display: -webkit-box;
+		-webkit-line-clamp: 3;
+		-webkit-box-orient: vertical;
+		overflow: hidden;
+		min-height: 60px;
+	}
+	.pj-tags {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 8px;
+		position: relative;
+		z-index: 1;
+	}
+	.pj-tags span {
+		font-size: 11px;
+		font-weight: 700;
+		letter-spacing: 0.08em;
+		text-transform: uppercase;
+		color: var(--indigo-light);
+		background: rgba(99, 102, 241, 0.1);
+		border: 1px solid rgba(99, 102, 241, 0.2);
+		padding: 5px 10px;
+		border-radius: 8px;
+	}
+	.pj-empty {
+		text-align: center;
+		padding: 60px 0;
+		color: var(--text-mute);
+		font-size: 14px;
+	}
+	.pj-empty b {
+		color: var(--indigo-light);
+	}
+</style>
+
+<script>
+	const input = document.getElementById('searchInput');
+	const grid = document.getElementById('pjGrid');
+	const empty = document.getElementById('pjEmpty');
+	const queryLabel = document.getElementById('pjQuery');
+
+	input?.addEventListener('input', () => {
+		const q = input.value.trim().toLowerCase();
+		let visible = 0;
+		grid.querySelectorAll('.pj-card').forEach((card) => {
+			const hit = !q || card.dataset.search.includes(q);
+			card.style.display = hit ? '' : 'none';
+			if (hit) visible++;
+		});
+		empty.hidden = visible > 0;
+		queryLabel.textContent = input.value.trim();
+	});
+</script>

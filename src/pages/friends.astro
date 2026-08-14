@@ -1,0 +1,261 @@
+---
+import Layout from '../layouts/Layout.astro';
+import { friendsData } from '../data/friends';
+
+const applyFormat = `名称：我的博客
+链接：https://your-domain.com
+头像：https://your-domain.com/favicon.svg
+简介：用 Astro 构建的个人博客，记录技术、生活与思考。`;
+---
+
+<Layout title="云端引力 · 友链" description="那些散落在赛博宇宙各处的有趣灵魂与神经节点。">
+	<section class="page-head">
+		<h1>云端引力</h1>
+		<p class="page-sub">那些散落在赛博宇宙各处的有趣灵魂与神经节点。</p>
+	</section>
+
+	<div class="fr-grid">
+		{
+			friendsData.map((friend) => (
+				<a
+					href={friend.url}
+					target="_blank"
+					rel="noopener noreferrer"
+					class="fr-card glass"
+					style={`--theme: ${friend.themeColor}`}
+				>
+					<div class="fr-glow"></div>
+					<div class="fr-head">
+						<div class="fr-avatar">
+							<img src={friend.avatar} alt={friend.name} loading="lazy" />
+						</div>
+						<div class="fr-info">
+							<h2>{friend.name}</h2>
+							<span class="fr-online"><i></i>Online</span>
+						</div>
+					</div>
+					<p class="fr-desc">{friend.description}</p>
+				</a>
+			))
+		}
+	</div>
+
+	<section class="fr-apply glass">
+		<h2>✨ 建立神经连接</h2>
+		<p class="fr-apply-sub">欢迎各位大佬交换友链！请一键复制下方格式，并在留言板申请：</p>
+		<pre class="fr-code"><code>{applyFormat}</code><button id="copyBtn" class="fr-copy" title="一键复制">📋</button></pre>
+		<a class="fr-go" href="/blog">前往留言区申请 👇</a>
+		<p class="fr-tip">评论区（Gitalk）接入后，此处将直接跳转留言板。</p>
+	</section>
+</Layout>
+
+<style>
+	.page-head {
+		text-align: center;
+		margin: 16px 0 40px;
+	}
+	.page-head h1 {
+		font-size: 34px;
+		font-weight: 900;
+		letter-spacing: 0.12em;
+		background: linear-gradient(120deg, var(--text-main), var(--indigo-light));
+		-webkit-background-clip: text;
+		background-clip: text;
+		color: transparent;
+	}
+	.page-sub {
+		color: var(--text-mute);
+		font-size: 14px;
+		margin-top: 8px;
+	}
+	.fr-grid {
+		display: grid;
+		grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+		gap: 20px;
+	}
+	.fr-card {
+		position: relative;
+		overflow: hidden;
+		padding: 20px;
+		border-radius: 22px;
+		text-decoration: none;
+		transition: transform 0.4s, box-shadow 0.4s;
+	}
+	.fr-card:hover {
+		transform: translateY(-4px);
+		box-shadow: 0 20px 40px -12px rgba(99, 102, 241, 0.35);
+	}
+	.fr-glow {
+		position: absolute;
+		bottom: -40px;
+		right: -40px;
+		width: 120px;
+		height: 120px;
+		border-radius: 50%;
+		background: var(--theme);
+		filter: blur(28px);
+		opacity: 0;
+		transition: opacity 0.6s;
+		pointer-events: none;
+	}
+	.fr-card:hover .fr-glow {
+		opacity: 1;
+	}
+	.fr-head {
+		display: flex;
+		align-items: center;
+		gap: 14px;
+		position: relative;
+		z-index: 1;
+		margin-bottom: 14px;
+	}
+	.fr-avatar {
+		width: 56px;
+		height: 56px;
+		flex-shrink: 0;
+		padding: 2px;
+		border-radius: 50%;
+		background: linear-gradient(135deg, rgba(99, 102, 241, 0.5), rgba(168, 85, 247, 0.5));
+		transition: transform 1s;
+	}
+	.fr-card:hover .fr-avatar {
+		transform: rotate(360deg);
+	}
+	.fr-avatar img {
+		width: 100%;
+		height: 100%;
+		border-radius: 50%;
+		object-fit: cover;
+		background: #fff;
+	}
+	.fr-info {
+		min-width: 0;
+	}
+	.fr-info h2 {
+		font-size: 17px;
+		font-weight: 800;
+		color: var(--text-main);
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		transition: color 0.3s;
+	}
+	.fr-card:hover .fr-info h2 {
+		color: var(--indigo-light);
+	}
+	.fr-online {
+		display: inline-flex;
+		align-items: center;
+		gap: 6px;
+		font-size: 11px;
+		font-weight: 700;
+		letter-spacing: 0.1em;
+		text-transform: uppercase;
+		color: var(--indigo-light);
+		margin-top: 4px;
+	}
+	.fr-online i {
+		width: 7px;
+		height: 7px;
+		border-radius: 50%;
+		background: var(--indigo);
+		animation: pulse 1.6s infinite;
+	}
+	@keyframes pulse {
+		50% {
+			opacity: 0.3;
+		}
+	}
+	.fr-desc {
+		font-size: 13px;
+		color: var(--text-sub);
+		line-height: 1.7;
+		position: relative;
+		z-index: 1;
+		display: -webkit-box;
+		-webkit-line-clamp: 3;
+		-webkit-box-orient: vertical;
+		overflow: hidden;
+	}
+	.fr-apply {
+		margin-top: 44px;
+		padding: 28px;
+		border-radius: 24px;
+		text-align: center;
+		max-width: 640px;
+		margin-left: auto;
+		margin-right: auto;
+	}
+	.fr-apply h2 {
+		font-size: 22px;
+		font-weight: 900;
+		letter-spacing: 0.1em;
+	}
+	.fr-apply-sub {
+		color: var(--text-mute);
+		font-size: 13px;
+		margin: 10px 0 20px;
+	}
+	.fr-code {
+		position: relative;
+		text-align: left;
+		background: rgba(2, 6, 23, 0.55);
+		border: 1px solid var(--card-border);
+		border-radius: 14px;
+		padding: 16px 20px;
+		font-size: 12px;
+		line-height: 1.8;
+		color: var(--text-sub);
+		white-space: pre-wrap;
+		word-break: break-all;
+	}
+	.fr-copy {
+		position: absolute;
+		top: 10px;
+		right: 10px;
+		border: none;
+		border-radius: 10px;
+		padding: 6px 10px;
+		background: rgba(255, 255, 255, 0.08);
+		cursor: pointer;
+		font-size: 14px;
+		transition: background 0.3s;
+	}
+	.fr-copy:hover {
+		background: var(--indigo);
+	}
+	.fr-go {
+		display: inline-block;
+		margin-top: 22px;
+		padding: 11px 32px;
+		border-radius: 999px;
+		background: linear-gradient(120deg, var(--indigo), var(--purple));
+		color: #fff;
+		font-weight: 800;
+		font-size: 14px;
+		text-decoration: none;
+		letter-spacing: 0.08em;
+		box-shadow: 0 10px 24px -8px rgba(99, 102, 241, 0.5);
+		transition: transform 0.25s;
+	}
+	.fr-go:hover {
+		transform: scale(1.04);
+	}
+	.fr-tip {
+		margin-top: 12px;
+		font-size: 11px;
+		color: var(--text-mute);
+	}
+</style>
+
+<script>
+	const copyBtn = document.getElementById('copyBtn');
+	copyBtn?.addEventListener('click', () => {
+		const text = copyBtn.previousElementSibling?.textContent || '';
+		if (navigator.clipboard) {
+			navigator.clipboard.writeText(text);
+			copyBtn.textContent = '✅ 已复制';
+			setTimeout(() => (copyBtn.textContent = '📋'), 2000);
+		}
+	});
+</script>

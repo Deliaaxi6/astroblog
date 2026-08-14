@@ -116,11 +116,11 @@ body {
 
 .nav-links {
 	display: flex;
-	gap: 32px;
+	gap: 22px;
 }
 
 .nav-links a {
-	font-size: 14px;
+	font-size: 13px;
 	font-weight: 700;
 	text-decoration: none;
 	color: var(--text-sub);
@@ -1519,7 +1519,7 @@ input[type='range'].seek::-webkit-slider-thumb:hover {
 }
 
 /* 响应式 */
-@media (max-width: 1024px) {
+@media (max-width: 900px) {
 	.nav-links {
 		display: none;
 	}
