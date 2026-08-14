@@ -355,38 +355,52 @@ const buildStamp = '2026-08-14T00:00:00';
 				return;
 			}
 			q = q.trim();
-			var res = searchData.filter(function (p) {
-				return (
-					p.title.toLowerCase().indexOf(q.toLowerCase()) >= 0 ||
-					p.desc.toLowerCase().indexOf(q.toLowerCase()) >= 0 ||
-					(p.tags || []).some(function (t) {
-						return t.toLowerCase().indexOf(q.toLowerCase()) >= 0;
-					})
-				);
-			});
-			var html = '';
-			if (res.length) {
-				res.forEach(function (p) {
-					html +=
-						'<a class="search-item" href="/blog/' +
-						p.slug +
-						'"><h4>' +
-						hl(p.title, q) +
-						'</h4><p>' +
-						hl(p.desc, q) +
-						'</p><div class="tags">' +
-						p.tags
-							.map(function (t) {
-								return '<span>' + hl(t, q) + '</span>';
-							})
-							.join('') +
-						'</div></a>';
-				});
-			} else {
-				html = '<div class="search-empty">数据海中未发现关于 <b>' + escapeHtml(q) + '</b> 的踪迹</div>';
+			if (window.__pfSearch) {
+				window.__pfSearch(q, box);
+				return;
 			}
-			box.innerHTML = html;
-			box.classList.add('show');
+			window.__pfSearch = runSearch;
+			var s = document.createElement('script');
+			s.src = '/pagefind/pagefind.js';
+			s.onload = function () {
+				runSearch(q, box);
+			};
+			s.onerror = function () {
+				box.innerHTML = '<div class="search-empty">搜索索引未生成，请先执行构建</div>';
+				box.classList.add('show');
+			};
+			document.head.appendChild(s);
+		}
+		async function runSearch(q, box) {
+			try {
+				var res = await window.Pagefind.search(q);
+				var items = (res.results || []).slice(0, 8);
+				if (!items.length) {
+					box.innerHTML = '<div class="search-empty">数据海中未发现关于 <b>' + escapeHtml(q) + '</b> 的踪迹</div>';
+					box.classList.add('show');
+					return;
+				}
+				var data = await Promise.all(items.map(function (i) { return i.data(); }));
+				var html = '';
+				data.forEach(function (d) {
+					var m = d.meta || {};
+					var url = d.url || '#';
+					var slug = url.replace(/\/+$/, '').split('/').pop();
+					html +=
+						'<a class="search-item" href="' +
+						url +
+						'"><h4>' +
+						hl(m.title || slug, q) +
+						'</h4><p>' +
+						(d.excerpt || '') +
+						'</p></a>';
+				});
+				box.innerHTML = html;
+				box.classList.add('show');
+			} catch (e) {
+				box.innerHTML = '<div class="search-empty">搜索服务不可用</div>';
+				box.classList.add('show');
+			}
 		}
 		document.getElementById('searchInput').addEventListener('input', function (e) {
 			doSearch(e.target.value);
