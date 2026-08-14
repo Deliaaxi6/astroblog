@@ -1,0 +1,484 @@
+---
+import { getCollection } from 'astro:content';
+import Layout from '../layouts/Layout.astro';
+
+const posts = (await getCollection('blog', ({ data }) => !data.draft)).sort(
+	(a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf()
+);
+
+const tagCounts = new Map<string, number>();
+posts.forEach((post) =>
+	(post.data.tags?.length ? post.data.tags : ['未分类']).forEach((tag) =>
+		tagCounts.set(tag, (tagCounts.get(tag) || 0) + 1)
+	)
+);
+const tags = [...tagCounts.entries()]
+	.map(([name, count]) => ({ name, count }))
+	.sort((a, b) => b.count - a.count);
+
+const formatter = new Intl.DateTimeFormat('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit' });
+---
+
+<Layout title="归档与探索" description="全部文章的时间线归档与标签聚合。">
+	<section class="page-head">
+		<h1>归档与探索</h1>
+		<p class="page-sub">✨ 总计 {posts.length} 篇研究记录</p>
+	</section>
+
+	<div class="tools">
+		<div class="search-wrap">
+			<input id="searchInput" type="text" placeholder="搜寻被封存的知识..." />
+		</div>
+		<div class="tagbar glass" id="tagBar">
+			<button class="tag-btn active" data-tag="">全部档案</button>
+			{
+				tags.map((tag) => (
+					<button class="tag-btn" data-tag={tag.name}>
+						{tag.name} <i>{tag.count}</i>
+					</button>
+				))
+			}
+		</div>
+		<div class="view-switch glass">
+			<button id="viewTimeline" class="vs-btn active">🧬 中枢链路</button>
+			<button id="viewCard" class="vs-btn">▦ 矩阵网格</button>
+		</div>
+	</div>
+
+	<div id="timelineView" class="tl-wrap">
+		<div class="tl-line"></div>
+		{
+			posts.map((post, i) => (
+				<article
+					class:list={['tl-node', i % 2 === 0 ? 'tl-left' : 'tl-right']}
+					data-tags={(post.data.tags ?? ['未分类']).join(' ').toLowerCase()}
+					data-search={`${post.data.title} ${post.data.description ?? ''}`.toLowerCase()}
+				>
+					<div class="tl-dot"></div>
+					<div class="tl-date">{formatter.format(post.data.pubDate)}</div>
+					<div class="tl-card glass">
+						<a href={`/blog/${post.id}`}><h2>{post.data.title}</h2></a>
+						{post.data.description && <p>{post.data.description}</p>}
+						<div class="tl-tags">
+							{post.data.tags?.map((tag) => <a href={`/tags/${tag}`}>#{tag}</a>)}
+						</div>
+					</div>
+				</article>
+			))
+		}
+		<div id="tlEmpty" class="tl-empty" hidden>这个频段没有接收到任何信号 📡</div>
+	</div>
+
+	<div id="cardView" class="cv-grid" hidden>
+		{
+			posts.map((post) => (
+				<a
+					href={`/blog/${post.id}`}
+					class="cv-card glass"
+					data-tags={(post.data.tags ?? ['未分类']).join(' ').toLowerCase()}
+					data-search={`${post.data.title} ${post.data.description ?? ''}`.toLowerCase()}
+				>
+					<div class:list={['cv-cover', !post.data.cover && 'cv-cover-fallback']}>
+						{post.data.cover && <img src={post.data.cover} alt={post.data.title} loading="lazy" />}
+						<span class="cv-date">{formatter.format(post.data.pubDate)}</span>
+					</div>
+					<div class="cv-body">
+						<h3>{post.data.title}</h3>
+						<p>{post.data.description ?? '暂无描述'}</p>
+						<div class="cv-tags">
+							{post.data.tags?.map((tag) => <span>#{tag}</span>)}
+						</div>
+					</div>
+				</a>
+			))
+		}
+		<div id="cvEmpty" class="cv-empty" hidden>这个频段没有接收到任何信号 📡</div>
+	</div>
+</Layout>
+
+<style>
+	.page-head {
+		text-align: center;
+		margin: 16px 0 32px;
+	}
+	.page-head h1 {
+		font-size: 34px;
+		font-weight: 900;
+		letter-spacing: 0.1em;
+		background: linear-gradient(120deg, var(--text-main), var(--indigo-light));
+		-webkit-background-clip: text;
+		background-clip: text;
+		color: transparent;
+	}
+	.page-sub {
+		color: var(--text-mute);
+		font-size: 14px;
+		margin-top: 8px;
+	}
+	.tools {
+		display: flex;
+		flex-direction: column;
+		gap: 16px;
+		margin-bottom: 48px;
+	}
+	.search-wrap input {
+		width: 100%;
+		max-width: 480px;
+		margin: 0 auto;
+		display: block;
+		padding: 13px 22px 13px 44px;
+		border-radius: 14px;
+		border: 1px solid var(--card-border);
+		background: var(--card-bg);
+		backdrop-filter: var(--blur);
+		color: var(--text-main);
+		font-size: 14px;
+		outline: none;
+		transition: box-shadow 0.3s, border-color 0.3s;
+		background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2394a3b8'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z'/%3E%3C/svg%3E");
+		background-repeat: no-repeat;
+		background-position: 14px center;
+		background-size: 18px;
+	}
+	.search-wrap input:focus {
+		border-color: var(--indigo-light);
+		box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
+	}
+	.tagbar {
+		display: flex;
+		flex-wrap: wrap;
+		justify-content: center;
+		gap: 8px;
+		padding: 14px;
+		border-radius: 18px;
+	}
+	.tag-btn {
+		border: none;
+		background: rgba(99, 102, 241, 0.08);
+		color: var(--text-sub);
+		font-size: 12px;
+		font-weight: 700;
+		font-family: inherit;
+		padding: 7px 14px;
+		border-radius: 10px;
+		cursor: pointer;
+		transition: all 0.3s;
+	}
+	.tag-btn i {
+		font-style: normal;
+		opacity: 0.5;
+		margin-left: 4px;
+	}
+	.tag-btn:hover {
+		color: var(--indigo-light);
+	}
+	.tag-btn.active {
+		background: var(--indigo);
+		color: #fff;
+		box-shadow: 0 6px 14px -4px rgba(99, 102, 241, 0.5);
+	}
+	.view-switch {
+		display: flex;
+		justify-content: center;
+		gap: 6px;
+		width: fit-content;
+		margin: 0 auto;
+		padding: 5px;
+		border-radius: 14px;
+	}
+	.vs-btn {
+		border: none;
+		background: none;
+		color: var(--text-mute);
+		font-size: 13px;
+		font-weight: 800;
+		font-family: inherit;
+		padding: 8px 18px;
+		border-radius: 10px;
+		cursor: pointer;
+		transition: all 0.3s;
+	}
+	.vs-btn.active {
+		background: var(--indigo);
+		color: #fff;
+		box-shadow: 0 6px 14px -4px rgba(99, 102, 241, 0.5);
+	}
+	.vs-btn:not(.active):hover {
+		color: var(--indigo-light);
+	}
+	.tl-wrap {
+		position: relative;
+	}
+	.tl-line {
+		position: absolute;
+		left: 50%;
+		top: 0;
+		bottom: 0;
+		width: 2px;
+		transform: translateX(-50%);
+		background: linear-gradient(180deg, transparent, rgba(99, 102, 241, 0.4), rgba(168, 85, 247, 0.4), transparent);
+	}
+	.tl-node {
+		position: relative;
+		width: 50%;
+		padding: 0 48px 48px 0;
+	}
+	.tl-node.tl-right {
+		margin-left: 50%;
+		padding: 0 0 48px 48px;
+	}
+	.tl-dot {
+		position: absolute;
+		top: 6px;
+		right: -5px;
+		width: 12px;
+		height: 12px;
+		border-radius: 50%;
+		background: var(--indigo);
+		box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.2);
+		z-index: 1;
+	}
+	.tl-right .tl-dot {
+		right: auto;
+		left: -7px;
+	}
+	.tl-date {
+		position: absolute;
+		top: 2px;
+		right: 16px;
+		font-size: 12px;
+		font-weight: 700;
+		color: var(--text-mute);
+		letter-spacing: 0.05em;
+		font-family: monospace;
+	}
+	.tl-right .tl-date {
+		right: auto;
+		left: 16px;
+	}
+	.tl-card {
+		padding: 20px 22px;
+		border-radius: 16px;
+		transition: transform 0.3s, box-shadow 0.3s;
+	}
+	.tl-card:hover {
+		transform: translateY(-3px);
+		box-shadow: 0 18px 36px -14px rgba(99, 102, 241, 0.3);
+	}
+	.tl-card h2 {
+		font-size: 17px;
+		font-weight: 800;
+		color: var(--text-main);
+		transition: color 0.3s;
+		margin-bottom: 8px;
+	}
+	.tl-card h2:hover {
+		color: var(--indigo-light);
+	}
+	.tl-card a {
+		text-decoration: none;
+	}
+	.tl-card p {
+		font-size: 13px;
+		color: var(--text-sub);
+		line-height: 1.7;
+		margin-bottom: 12px;
+		display: -webkit-box;
+		-webkit-line-clamp: 2;
+		-webkit-box-orient: vertical;
+		overflow: hidden;
+	}
+	.tl-tags {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 8px;
+	}
+	.tl-tags a {
+		font-size: 11px;
+		font-weight: 700;
+		color: var(--indigo-light);
+		background: rgba(99, 102, 241, 0.1);
+		padding: 4px 10px;
+		border-radius: 999px;
+		transition: background 0.3s;
+	}
+	.tl-tags a:hover {
+		background: rgba(99, 102, 241, 0.25);
+	}
+	.tl-empty,
+	.cv-empty {
+		text-align: center;
+		padding: 80px 0;
+		color: var(--text-mute);
+		font-weight: 700;
+		letter-spacing: 0.05em;
+	}
+	.cv-grid {
+		display: grid;
+		grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+		gap: 22px;
+	}
+	.cv-card {
+		border-radius: 18px;
+		overflow: hidden;
+		text-decoration: none;
+		transition: transform 0.3s, box-shadow 0.3s;
+	}
+	.cv-card:hover {
+		transform: translateY(-4px);
+		box-shadow: 0 18px 36px -14px rgba(99, 102, 241, 0.35);
+	}
+	.cv-cover {
+		position: relative;
+		aspect-ratio: 16 / 9;
+		overflow: hidden;
+	}
+	.cv-cover img {
+		width: 100%;
+		height: 100%;
+		object-fit: cover;
+		transition: transform 0.6s;
+	}
+	.cv-card:hover .cv-cover img {
+		transform: scale(1.08);
+	}
+	.cv-cover::after {
+		content: '';
+		position: absolute;
+		inset: 0;
+		background: linear-gradient(to top, rgba(0, 0, 0, 0.5), transparent);
+	}
+	.cv-cover-fallback {
+		background: linear-gradient(135deg, rgba(99, 102, 241, 0.5), rgba(168, 85, 247, 0.5));
+	}
+	.cv-date {
+		position: absolute;
+		bottom: 10px;
+		left: 14px;
+		z-index: 1;
+		color: rgba(255, 255, 255, 0.95);
+		font-size: 11px;
+		font-weight: 700;
+		font-family: monospace;
+		background: rgba(0, 0, 0, 0.4);
+		backdrop-filter: blur(4px);
+		padding: 4px 10px;
+		border-radius: 6px;
+	}
+	.cv-body {
+		padding: 16px 18px 18px;
+	}
+	.cv-body h3 {
+		font-size: 16px;
+		font-weight: 800;
+		color: var(--text-main);
+		margin-bottom: 8px;
+		line-height: 1.4;
+		display: -webkit-box;
+		-webkit-line-clamp: 2;
+		-webkit-box-orient: vertical;
+		overflow: hidden;
+		transition: color 0.3s;
+	}
+	.cv-card:hover .cv-body h3 {
+		color: var(--indigo-light);
+	}
+	.cv-body p {
+		font-size: 12px;
+		color: var(--text-sub);
+		line-height: 1.6;
+		margin-bottom: 12px;
+		display: -webkit-box;
+		-webkit-line-clamp: 2;
+		-webkit-box-orient: vertical;
+		overflow: hidden;
+	}
+	.cv-tags {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 6px;
+	}
+	.cv-tags span {
+		font-size: 10px;
+		font-weight: 700;
+		color: var(--indigo-light);
+		background: rgba(99, 102, 241, 0.1);
+		padding: 3px 8px;
+		border-radius: 6px;
+	}
+	@media (max-width: 768px) {
+		.tl-line,
+		.tl-node,
+		.tl-dot,
+		.tl-date {
+			display: none;
+		}
+		.tl-node.tl-right {
+			margin-left: 0;
+			width: 100%;
+			padding: 0 0 20px;
+		}
+	}
+</style>
+
+<script>
+	const searchInput = document.getElementById('searchInput');
+	const tagBar = document.getElementById('tagBar');
+	const timelineView = document.getElementById('timelineView');
+	const cardView = document.getElementById('cardView');
+	const tlEmpty = document.getElementById('tlEmpty');
+	const cvEmpty = document.getElementById('cvEmpty');
+	let selectedTag = '';
+	let query = '';
+	let viewMode = window.innerWidth < 768 ? 'card' : 'timeline';
+
+	function render() {
+		tlEmpty.hidden = true;
+		cvEmpty.hidden = true;
+		let tlVisible = 0;
+		let cvVisible = 0;
+		timelineView.querySelectorAll('.tl-node').forEach((node) => {
+			const hitTag = !selectedTag || node.dataset.tags.includes(selectedTag);
+			const hitQuery = !query || node.dataset.search.includes(query);
+			node.hidden = !(hitTag && hitQuery);
+			if (!node.hidden) tlVisible++;
+		});
+		cardView.querySelectorAll('.cv-card').forEach((card) => {
+			const hitTag = !selectedTag || card.dataset.tags.includes(selectedTag);
+			const hitQuery = !query || card.dataset.search.includes(query);
+			card.hidden = !(hitTag && hitQuery);
+			if (!card.hidden) cvVisible++;
+		});
+		tlEmpty.hidden = tlVisible > 0;
+		cvEmpty.hidden = cvVisible > 0;
+	}
+
+	searchInput?.addEventListener('input', () => {
+		query = searchInput.value.trim().toLowerCase();
+		render();
+	});
+
+	tagBar?.addEventListener('click', (e) => {
+		const btn = e.target.closest('.tag-btn');
+		if (!btn) return;
+		tagBar.querySelectorAll('.tag-btn').forEach((b) => b.classList.remove('active'));
+		btn.classList.add('active');
+		selectedTag = btn.dataset.tag.toLowerCase();
+		render();
+	});
+
+	document.getElementById('viewTimeline').addEventListener('click', () => {
+		viewMode = 'timeline';
+		timelineView.hidden = false;
+		cardView.hidden = true;
+		document.getElementById('viewTimeline').classList.add('active');
+		document.getElementById('viewCard').classList.remove('active');
+	});
+	document.getElementById('viewCard').addEventListener('click', () => {
+		viewMode = 'card';
+		timelineView.hidden = true;
+		cardView.hidden = false;
+		document.getElementById('viewCard').classList.add('active');
+		document.getElementById('viewTimeline').classList.remove('active');
+	});
+</script>

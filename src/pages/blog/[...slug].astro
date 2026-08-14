@@ -36,7 +36,7 @@ const formatter = new Intl.DateTimeFormat('zh-CN', {
 					</time>
 					<span class="meta-sep">·</span>
 					<span>约 {mins} 分钟读完</span>
-					{post.data.tags?.map((tag) => <span class="tag">{tag}</span>)}
+					{post.data.tags?.map((tag) => <a class="tag" href={`/tags/${tag}`}>{tag}</a>)}
 				</div>
 			</header>
 			<div class="prose">

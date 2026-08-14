@@ -1,0 +1,99 @@
+---
+import { getCollection } from 'astro:content';
+import Layout from '../../layouts/Layout.astro';
+
+export async function getStaticPaths() {
+	const posts = await getCollection('blog', ({ data }) => !data.draft);
+	const tagSet = new Set<string>();
+	posts.forEach((post) => (post.data.tags ?? []).forEach((tag) => tagSet.add(tag)));
+	return [...tagSet].map((tag) => ({ params: { tag }, props: { tag } }));
+}
+
+const { tag } = Astro.props;
+
+const posts = (await getCollection('blog', ({ data }) => !data.draft))
+	.filter((post) => post.data.tags?.includes(tag))
+	.sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf());
+
+const formatter = new Intl.DateTimeFormat('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit' });
+---
+
+<Layout title={`#${tag} · 标签`} description={`标签 #${tag} 下的全部文章。`}>
+	<section class="page-head">
+		<a href="/tags" class="back-link">← 全部标签</a>
+		<h1><span class="hash">#</span>{tag}</h1>
+		<p class="page-sub">共 {posts.length} 篇文章</p>
+	</section>
+
+	<ul class="post-list">
+		{
+			posts.map((post) => (
+				<a href={`/blog/${post.id}`} class="post-card">
+					{post.data.cover && <img class="post-thumb" src={post.data.cover} alt={post.data.title} loading="lazy" />}
+					<div class="post-body">
+						<h2>{post.data.title}</h2>
+						<div class="post-meta">
+							<time datetime={post.data.pubDate.toISOString()}>
+								{formatter.format(post.data.pubDate)}
+							</time>
+							{post.data.tags?.slice(0, 3).map((t) => <span class="tag">{t}</span>)}
+						</div>
+						{post.data.description && <p>{post.data.description}</p>}
+					</div>
+				</a>
+			))
+		}
+	</ul>
+</Layout>
+
+<style>
+	.page-head {
+		margin: 16px 0 32px;
+	}
+	.back-link {
+		display: inline-block;
+		font-size: 13px;
+		font-weight: 700;
+		color: var(--text-mute);
+		text-decoration: none;
+		margin-bottom: 16px;
+		transition: color 0.3s;
+	}
+	.back-link:hover {
+		color: var(--indigo-light);
+	}
+	.page-head h1 {
+		font-size: 34px;
+		font-weight: 900;
+		letter-spacing: 0.05em;
+	}
+	.hash {
+		color: var(--indigo-light);
+	}
+	.page-sub {
+		color: var(--text-mute);
+		font-size: 14px;
+		margin-top: 8px;
+	}
+	.post-card {
+		display: grid;
+		grid-template-columns: 1fr;
+		gap: 14px;
+	}
+	.post-thumb {
+		width: 100%;
+		height: 160px;
+		object-fit: cover;
+		border-radius: 12px;
+		border: 1px solid var(--card-border);
+	}
+	@media (min-width: 640px) {
+		.post-card {
+			grid-template-columns: 200px 1fr;
+			align-items: start;
+		}
+		.post-thumb {
+			height: 112px;
+		}
+	}
+</style>
