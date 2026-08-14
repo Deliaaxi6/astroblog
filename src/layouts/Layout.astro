@@ -1,0 +1,70 @@
+---
+interface Props {
+	title?: string;
+	description?: string;
+}
+
+const { title = '我的博客', description = '用 Astro 构建的个人博客' } = Astro.props;
+import Background from '../components/Background.astro';
+import '../styles/global.css';
+---
+
+<!doctype html>
+<html lang="zh-CN" data-theme="dark">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<meta name="generator" content={Astro.generator} />
+		<title>{title}</title>
+		<meta name="description" content={description} />
+		<script is:inline>
+			(() => {
+				try {
+					const t = localStorage.getItem('theme') || 'dark';
+					document.documentElement.setAttribute('data-theme', t);
+				} catch (e) {
+					/* noop */
+				}
+			})();
+		</script>
+	</head>
+	<body>
+		<Background />
+		<header id="navbar">
+			<a class="brand" href="/">我的博客</a>
+			<nav class="nav-links">
+				<a href="/" class:list={{ active: Astro.url.pathname === '/' }}>首页</a>
+				<a
+					href="/blog"
+					class:list={{ active: Astro.url.pathname.startsWith('/blog') }}>文章</a>
+				<a
+					href="/about"
+					class:list={{ active: Astro.url.pathname.startsWith('/about') }}>关于</a>
+			</nav>
+		</header>
+		<main class="container">
+			<slot />
+			<footer class="site-footer">
+				© {new Date().getFullYear()} 我的博客 · Powered by Astro
+			</footer>
+		</main>
+		<div id="toast"></div>
+		<script>
+			const lastY = { v: 0 };
+			const nav = document.getElementById('navbar');
+			window.addEventListener(
+				'scroll',
+				() => {
+					const y = window.scrollY;
+					if (y > lastY.v && y > 80) {
+						nav.classList.add('hidden');
+					} else {
+						nav.classList.remove('hidden');
+					}
+					lastY.v = y;
+				},
+				{ passive: true }
+			);
+		</script>
+	</body>
+</html>

@@ -1,0 +1,628 @@
+---
+import { getCollection } from 'astro:content';
+import Layout from '../layouts/Layout.astro';
+
+const posts = (await getCollection('blog', ({ data }) => !data.draft)).sort(
+	(a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf()
+);
+
+const formatter = new Intl.DateTimeFormat('zh-CN', {
+	year: 'numeric',
+	month: '2-digit',
+	day: '2-digit',
+});
+
+const covers = [
+	'https://bu.dusays.com/2026/03/24/69c1e38b346cb.jpg',
+	'https://bu.dusays.com/2026/03/31/69cb69bb530d8.jpg',
+	'https://bu.dusays.com/2026/03/24/69c26fe4acdb5.jpg',
+	'https://bu.dusays.com/2026/03/24/69c1e38b4c370.jpg',
+];
+
+const searchData = posts.map((p, i) => ({
+	slug: p.id,
+	title: p.data.title,
+	desc: p.data.description ?? '',
+	date: formatter.format(p.data.pubDate),
+	tags: p.data.tags ?? [],
+	cover: covers[i % covers.length],
+}));
+
+const chatters = [
+	{
+		title: '今晚的星空很亮',
+		desc: '调试了一整天 Astro 构建流程，抬头看看窗外的星星，突然觉得代码也没那么难了…',
+		cover: 'https://bu.dusays.com/2026/03/24/69c1e38b4c370.jpg',
+		date: '2026.08.10',
+	},
+	{
+		title: '博客终于跑起来了！',
+		desc: '从 Next.js 到 Astro，从复刻到移植，这个小小的站点终于有了自己的模样，嘿嘿。',
+		cover: 'https://bu.dusays.com/2026/03/31/69cb69bb530d8.jpg',
+		date: '2026.08.12',
+	},
+	{
+		title: '最近在读什么',
+		desc: '代码、学术与生活的碎片记录，慢慢整理成文，放在这里。',
+		cover: 'https://bu.dusays.com/2026/03/24/69c26fe4d9486.jpg',
+		date: '2026.08.13',
+	},
+];
+
+const playlist = [
+	{
+		title: '永夜的星河',
+		artist: '云音乐电台',
+		cover: 'https://bu.dusays.com/2026/03/24/69c1e38ac1846.jpg',
+		lyric: '在永夜的星河里，我寻找着属于你的那颗星…',
+		dur: 228,
+	},
+	{
+		title: '代码与诗',
+		artist: 'AI 生成',
+		cover: 'https://bu.dusays.com/2026/03/24/69c24230de927.jpg',
+		lyric: '一行行代码，写成了送给未来的诗…',
+		dur: 195,
+	},
+	{
+		title: '深空来信',
+		artist: 'Astro 印象曲',
+		cover: 'https://bu.dusays.com/2026/03/24/69c24230a4efe.jpg',
+		lyric: '风从深空吹来，带着星星的讯息…',
+		dur: 240,
+	},
+];
+
+const buildStamp = '2026-08-14T00:00:00';
+---
+
+<Layout title="我的博客">
+	<!-- 搜索框 -->
+	<div class="search-wrap" id="searchWrap">
+		<form onsubmit="return false;">
+			<input
+				class="search-input"
+				id="searchInput"
+				type="text"
+				placeholder="搜寻标题、描述或标签..."
+				autocomplete="off"
+			/>
+			<svg
+				class="search-icon"
+				xmlns="http://www.w3.org/2000/svg"
+				viewBox="0 0 24 24"
+				fill="none"
+				stroke="currentColor"
+				stroke-width="2.5"
+				stroke-linecap="round"
+				stroke-linejoin="round"
+				width="20"
+				height="20"
+			>
+				<circle cx="11" cy="11" r="8"></circle>
+				<line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+			</svg>
+		</form>
+		<div class="search-results" id="searchResults"></div>
+	</div>
+
+	<!-- 第一行：个人名片 + 播放器 -->
+	<div class="row row-1">
+		<div class="glass profile" id="profileCard">
+			<div class="profile-top">
+				<div class="avatar-box">
+					<img
+						src="https://bu.dusays.com/2026/03/24/69c1e38ac1846.jpg"
+						alt="avatar"
+					/>
+				</div>
+				<div>
+					<h1 class="profile-name">我的博客</h1>
+					<p class="profile-bio">
+						在代码、学术与日常之间穿梭的普通人。最近正埋头于 Astro
+						静态站点与内容管理的研究。
+					</p>
+				</div>
+			</div>
+			<div class="profile-bottom">
+				<div class="stats">
+					<div class="stat indigo">
+						<div class="num">{searchData.length}</div>
+						<div class="lbl">文章</div>
+					</div>
+					<div class="stat-divider"></div>
+					<div class="stat purple">
+						<div class="num">1</div>
+						<div class="lbl">杂谈</div>
+					</div>
+					<div class="stat-divider"></div>
+					<div class="stat pink">
+						<div class="num">5</div>
+						<div class="lbl">照片</div>
+					</div>
+				</div>
+				<div class="socials">
+					<button
+						class="social-btn"
+						title="github"
+						data-copy="https://github.com/"
+						data-label="GitHub"><svg fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.477 2 2 6.477 2 12c0 4.42 2.865 8.166 6.839 9.489.5.092.682-.217.682-.482 0-.237-.008-.866-.013-1.7-2.782.603-3.369-1.34-3.369-1.34-.454-1.156-1.11-1.464-1.11-1.464-.908-.62.069-.608.069-.608 1.003.07 1.531 1.03 1.531 1.03.892 1.529 2.341 1.087 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.11-4.555-4.943 0-1.091.39-1.984 1.029-2.683-.103-.253-.446-1.27.098-2.647 0 0 .84-.269 2.75 1.025A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.294 2.747-1.025 2.747-1.025.546 1.379.203 2.394.1 2.647.64.699 1.028 1.592 1.028 2.683 0 3.842-2.339 4.687-4.566 4.935.359.309.678.919.678 1.852 0 1.336-.012 2.415-.012 2.743 0 .267.18.578.688.48C19.138 20.161 22 16.418 22 12c0-5.523-4.477-10-10-10z"/></svg></button>
+					<button
+						class="social-btn"
+						title="gitee"
+						data-copy="https://gitee.com"
+						data-label="Gitee"><svg fill="currentColor" viewBox="0 0 24 24"><path d="M11.984 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.016 0zm6.09 5.333c.328 0 .593.266.592.593v1.482a.594.594 0 0 1-.593.592H9.777c-.982 0-1.778.796-1.778 1.778v5.63c0 .327.266.592.593.592h5.63c.982 0 1.778-.796 1.778-1.778v-.296a.593.593 0 0 0-.592-.593h-4.15a.592.592 0 0 1-.592-.592v-1.482c0-.326.266-.592.592-.592h6.81c.328 0 .593.266.593.592v3.408a4.74 4.74 0 0 1-4.741 4.74H7.11A4.74 4.74 0 0 1 2.37 14.81V9.186a4.74 4.74 0 0 1 4.74-4.741h10.963v.888z"/></svg></button>
+					<button
+						class="social-btn"
+						title="google"
+						data-copy="me@example.com"
+						data-label="邮箱"><svg fill="currentColor" viewBox="0 0 24 24"><path d="M12.48 10.92v3.28h7.84c-.24 1.84-.853 3.187-1.787 4.133-1.147 1.147-2.933 2.4-6.053 2.4-4.827 0-8.6-3.893-8.6-8.72s3.773-8.72 8.6-8.72c2.6 0 4.507 1.027 5.907 2.347l2.307-2.307C18.747 1.44 16.133 0 12.48 0 5.867 0 .307 5.387.307 12s5.56 12 12.173 12c3.573 0 6.267-1.173 8.373-3.36 2.16-2.16 2.84-5.213 2.84-7.667 0-.76-.053-1.467-.173-2.053H12.48z"/></svg></button>
+					<button
+						class="social-btn"
+						title="qq"
+						data-copy="123456789"
+						data-label="QQ号"><svg fill="currentColor" viewBox="0 0 24 24"><path d="M12 2c-4.418 0-8 3.582-8 8 0 1.25.289 2.433.805 3.49-1.024 1.708-1.53 3.843-1.021 5.308.203.585.806.84 1.341.57.828-.418 1.625-1.025 2.296-1.722 1.335.539 2.862.854 4.579.854 1.716 0 3.243-.315 4.578-.854.671.697 1.468 1.304 2.296 1.722.535.27 1.138.015 1.341-.57.509-1.465.003-3.6-1.021-5.308C19.71 12.433 20 11.25 20 10c0-4.418-3.582-8-8-8zm-2.5 8c-.828 0-1.5-.895-1.5-2s.672-2 1.5-2 1.5.895 1.5 2-.672 2-1.5 2zm5 0c-.828 0-1.5-.895-1.5-2s.672-2 1.5-2 1.5.895 1.5 2-.672 2-1.5 2z"/></svg></button>
+					<button
+						class="social-btn"
+						title="wechat"
+						data-copy="my-wechat"
+						data-label="微信号"><svg fill="currentColor" viewBox="0 0 24 24"><path d="M8.5 13.5c-3.59 0-6.5-2.42-6.5-5.4 0-2.98 2.91-5.4 6.5-5.4s6.5 2.42 6.5 5.4c0 2.98-2.91 5.4-6.5 5.4zm7.5 7.8c-2.76 0-5-2.02-5-4.5 0-2.48 2.24-4.5 5-4.5s5 2.02 5 4.5c0 2.48-2.24 4.5-5 4.5z"/></svg></button>
+				</div>
+			</div>
+		</div>
+
+		<div class="glass player" id="player">
+			<div class="player-glow" id="playerGlow"></div>
+			<div class="player-head">
+				<div class="disc" id="disc">
+					<img id="discImg" src="" alt="cover" />
+					<div class="hole"></div>
+				</div>
+				<div class="player-info">
+					<span class="player-badge">Cloud Music</span>
+					<h3 class="player-title" id="playerTitle"></h3>
+					<p class="player-artist" id="playerArtist"></p>
+				</div>
+			</div>
+			<div class="player-lyric" id="playerLyric"></div>
+			<div>
+				<div class="progress-row">
+					<span class="t" id="curTime">00:00</span>
+					<input type="range" class="seek" id="seekBar" min="0" max="100" value="0" />
+					<span class="t2" id="durTime">00:00</span>
+				</div>
+				<div class="player-controls">
+					<button class="ctrl-btn" id="prevBtn" title="上一首"><svg fill="currentColor" viewBox="0 0 24 24"><path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/></svg></button>
+					<button class="play-btn" id="playBtn" title="播放/暂停"><svg id="playIcon" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></button>
+					<button class="ctrl-btn" id="nextBtn" title="下一首"><svg fill="currentColor" viewBox="0 0 24 24"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/></svg></button>
+				</div>
+			</div>
+		</div>
+	</div>
+
+	<!-- 歌词栏 -->
+	<div class="lyricbar mt-24">
+		<div class="waves" id="waves">
+			<div class="wave w1"></div>
+			<div class="wave w2"></div>
+			<div class="wave w3"></div>
+			<div class="wave w4"></div>
+			<div class="wave w5"></div>
+		</div>
+		<div class="lyric-text"><p id="lyricLine"></p></div>
+		<div class="music-note">
+			<svg
+				fill="none"
+				viewBox="0 0 24 24"
+				stroke="currentColor"
+				stroke-width="2"
+				stroke-linecap="round"
+				stroke-linejoin="round"
+			><path d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3"/></svg>
+		</div>
+	</div>
+
+	<!-- 第二行：文章轮播 + 组合面板 -->
+	<div class="row row-2 mt-24">
+		<div class="carousel glass" id="postsCarousel">
+			<div class="carousel-bg" id="postsBg"></div>
+			<div class="carousel-content">
+				<div class="carousel-tags">
+					<span class="carousel-tag">Latest Insight</span>
+					<span class="carousel-date" id="postsDate"></span>
+				</div>
+				<h2 id="postsTitle"></h2>
+				<p id="postsDesc"></p>
+			</div>
+			<div class="dots" id="postsDots"></div>
+		</div>
+
+		<div class="col-stack">
+			<a class="poster" href="/blog" onclick="return false">
+				<img src="https://bu.dusays.com/2026/03/24/69c24230de927.jpg" alt="相册" />
+				<div class="overlay"></div>
+				<div class="info">
+					<h3>博客存档</h3>
+					<p>代码、文章与生活的视觉记录</p>
+				</div>
+			</a>
+			<div class="row row-3">
+				<div class="carousel chatter glass" id="chatterCarousel">
+					<div class="carousel-bg" id="chatterBg"></div>
+					<div class="carousel-content chatter-content">
+						<div><span class="chatter-tag" id="chatterTag"></span></div>
+						<h3 id="chatterTitle"></h3>
+						<p id="chatterDesc"></p>
+					</div>
+					<div class="dots" id="chatterDots"></div>
+				</div>
+				<div class="theme-block glass" id="themeBlock">
+					<div class="theme-orb">
+						<div class="day"></div>
+						<div class="night"></div>
+						<div class="ico ico-sun">🌸</div>
+						<div class="ico ico-moon">✨</div>
+					</div>
+					<h3 id="themeLabel">夜间模式</h3>
+					<p id="themeDesc">流萤飞舞的深空</p>
+				</div>
+			</div>
+		</div>
+	</div>
+
+	<!-- 站点仪表盘 -->
+	<div class="dashboard glass mt-24">
+		<div class="clock-box">
+			<span id="clock">00:00:00</span>
+			<div class="shine"></div>
+			<div class="line"></div>
+		</div>
+		<div class="dash-info">
+			<div class="dash-uptime">
+				<span class="live-dot"></span>
+				<span>系统已稳定运行：<b id="uptime"></b></span>
+			</div>
+			<div class="badges">
+				<span class="badge"><svg fill="currentColor" viewBox="0 0 24 24" style="color:#ff5d01"><path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"/></svg>Astro 7</span>
+				<span class="badge"><svg fill="currentColor" viewBox="0 0 24 24" style="color:#3178c6"><path d="M23 0H1a1 1 0 00-1 1v22a1 1 0 001 1h22a1 1 0 001-1V1a1 1 0 00-1-1zM12 20.5l-1.5-.5c-2.5-.5-3.5-2-3.5-4.5h2.5c0 1.5.5 2.5 1.5 2.5.5 0 1-.5 1-2v-8.5l1.5-.5c1-.5 1.5-.5 1.5-.5s0 1 0 1.5v8c0 3-2.5 4.5-3 4.5zm9.5-4c-.5 1.5-2 2.5-4 2.5-2 0-3.5-1-3.5-2.5 0-1 1-2 2.5-2.5l1.5-.5v-1.5c-1 .5-2 .5-2.5.5 0-1.5-.5-2.5-.5-3 1.5 0 3 .5 3.5 1l1.5.5V2.5c0-1.5.5-2 1.5-2.5 1-.5 2-1 2.5-1v20l-1.5 1z"/></svg>TypeScript 5</span>
+				<span class="badge"><svg fill="currentColor" viewBox="0 0 24 24" style="color:#0ea5e9"><path d="M14 3l1.7 3.2L19 6.8l-2.4 2.4.6 3.3-3.2-1.7-3.2 1.7.6-3.3L9 6.8l3.3-.6L14 3zM5 8l1.2 2.3L8.5 11.5l-2.3 1.2L5 15l-1.2-2.3L1.5 11.5l2.3-1.2L5 8zm14 8l-.9 1.8-1.8.9 1.8.9.9 1.8.9-1.8 1.8-.9-1.8-.9-.9-1.8z"/></svg>Markdown</span>
+			</div>
+			<a class="icp" href="/about">关于本站</a>
+		</div>
+	</div>
+
+	<style>
+		.mt-24 {
+			margin-top: 24px;
+		}
+		.col-stack {
+			display: flex;
+			flex-direction: column;
+			gap: 24px;
+		}
+	</style>
+
+	<script define:vars={{ searchData, chatters, playlist, buildStamp }}>
+		/* ============ Toast / 复制 ============ */
+		var toastTimer;
+		function showToast(msg) {
+			var t = document.getElementById('toast');
+			t.textContent = msg;
+			t.classList.add('show');
+			clearTimeout(toastTimer);
+			toastTimer = setTimeout(function () {
+				t.classList.remove('show');
+			}, 2200);
+		}
+		function copy(text, label) {
+			if (navigator.clipboard) navigator.clipboard.writeText(text);
+			showToast('✨ ' + label + '已复制到剪贴板: ' + text);
+		}
+
+		/* ============ 个人名片 / 社交 ============ */
+		document.getElementById('profileCard').addEventListener('click', function () {
+			showToast('✨ 这里是演示名片');
+		});
+		document.querySelectorAll('.social-btn').forEach(function (btn) {
+			btn.addEventListener('click', function (e) {
+				e.stopPropagation();
+				copy(btn.getAttribute('data-copy'), btn.getAttribute('data-label'));
+			});
+		});
+
+		/* ============ 搜索 ============ */
+		function escapeHtml(s) {
+			return String(s).replace(/[&<>"']/g, function (c) {
+				return {
+					'&': '&amp;',
+					'<': '&lt;',
+					'>': '&gt;',
+					'"': '&quot;',
+					"'": '&#39;',
+				}[c];
+			});
+		}
+		function hl(text, q) {
+			var t = escapeHtml(text);
+			if (!q.trim()) return t;
+			var re = new RegExp('(' + q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ')', 'gi');
+			return t.replace(re, '<mark>$1</mark>');
+		}
+		function doSearch(q) {
+			var box = document.getElementById('searchResults');
+			if (!q.trim()) {
+				box.classList.remove('show');
+				return;
+			}
+			q = q.trim();
+			var res = searchData.filter(function (p) {
+				return (
+					p.title.toLowerCase().indexOf(q.toLowerCase()) >= 0 ||
+					p.desc.toLowerCase().indexOf(q.toLowerCase()) >= 0 ||
+					(p.tags || []).some(function (t) {
+						return t.toLowerCase().indexOf(q.toLowerCase()) >= 0;
+					})
+				);
+			});
+			var html = '';
+			if (res.length) {
+				res.forEach(function (p) {
+					html +=
+						'<a class="search-item" href="/blog/' +
+						p.slug +
+						'"><h4>' +
+						hl(p.title, q) +
+						'</h4><p>' +
+						hl(p.desc, q) +
+						'</p><div class="tags">' +
+						p.tags
+							.map(function (t) {
+								return '<span>' + hl(t, q) + '</span>';
+							})
+							.join('') +
+						'</div></a>';
+				});
+			} else {
+				html = '<div class="search-empty">数据海中未发现关于 <b>' + escapeHtml(q) + '</b> 的踪迹</div>';
+			}
+			box.innerHTML = html;
+			box.classList.add('show');
+		}
+		document.getElementById('searchInput').addEventListener('input', function (e) {
+			doSearch(e.target.value);
+		});
+		document.getElementById('searchInput').addEventListener('focus', function (e) {
+			doSearch(e.target.value);
+		});
+		document.addEventListener('mousedown', function (e) {
+			var w = document.getElementById('searchWrap');
+			if (!w.contains(e.target)) {
+				document.getElementById('searchResults').classList.remove('show');
+			}
+		});
+
+		/* ============ 播放器 ============ */
+		var cur = 0,
+			playing = true,
+			p = 0,
+			tick = null,
+			lyricTimer = null;
+		function fmt(s) {
+			s = Math.max(0, Math.floor(s));
+			return String(Math.floor(s / 60)).padStart(2, '0') + ':' + String(s % 60).padStart(2, '0');
+		}
+		function loadSong() {
+			var s = playlist[cur];
+			document.getElementById('discImg').src = s.cover;
+			document.getElementById('playerTitle').textContent = s.title;
+			document.getElementById('playerArtist').textContent = s.artist;
+			document.getElementById('durTime').textContent = fmt(s.dur);
+			p = 0;
+			document.getElementById('seekBar').value = 0;
+			document.getElementById('seekBar').style.setProperty('--p', '0%');
+			document.getElementById('curTime').textContent = '00:00';
+			typeLyric(s.lyric, true);
+		}
+		function typeLyric(text, bar) {
+			var el = document.getElementById(bar ? 'lyricLine' : 'playerLyric');
+			el.innerHTML = '';
+			clearInterval(lyricTimer);
+			var i = 0,
+				out = el;
+			lyricTimer = setInterval(function () {
+				if (i <= text.length) {
+					out.textContent = text.slice(0, i);
+					if (bar) out.innerHTML = text.slice(0, i) + '<span class="cursor"></span>';
+					i++;
+				} else {
+					clearInterval(lyricTimer);
+					if (bar) out.innerHTML = text + '<span class="cursor"></span>';
+				}
+			}, 50);
+		}
+		function togglePlay() {
+			playing = !playing;
+			document.getElementById('disc').classList.toggle('paused', !playing);
+			document.getElementById('playIcon').innerHTML = playing
+				? '<path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>'
+				: '<path d="M8 5v14l11-7z"/>';
+			document.querySelectorAll('.wave').forEach(function (w) {
+				w.classList.toggle('on', playing);
+			});
+			if (playing && !tick) {
+				tick = setInterval(advance, 1000);
+			} else if (!playing && tick) {
+				clearInterval(tick);
+				tick = null;
+			}
+			document.getElementById('playerGlow').style.opacity = playing ? '1' : '0.3';
+		}
+		function nextSong() {
+			cur = (cur + 1) % playlist.length;
+			loadSong();
+			if (!playing) togglePlay();
+		}
+		function prevSong() {
+			cur = (cur - 1 + playlist.length) % playlist.length;
+			loadSong();
+			if (!playing) togglePlay();
+		}
+		function advance() {
+			var s = playlist[cur];
+			p++;
+			if (p >= s.dur) {
+				nextSong();
+				return;
+			}
+			var per = (p / s.dur) * 100;
+			document.getElementById('seekBar').value = per;
+			document.getElementById('seekBar').style.setProperty('--p', per + '%');
+			document.getElementById('curTime').textContent = fmt(p);
+		}
+		function onSeek(v) {
+			p = +v;
+			document.getElementById('seekBar').style.setProperty('--p', v + '%');
+			document.getElementById('curTime').textContent = fmt((v / 100) * playlist[cur].dur);
+		}
+		document.getElementById('playBtn').addEventListener('click', function (e) {
+			e.stopPropagation();
+			togglePlay();
+		});
+		document.getElementById('prevBtn').addEventListener('click', function (e) {
+			e.stopPropagation();
+			prevSong();
+		});
+		document.getElementById('nextBtn').addEventListener('click', function (e) {
+			e.stopPropagation();
+			nextSong();
+		});
+		document.getElementById('seekBar').addEventListener('input', function (e) {
+			e.stopPropagation();
+			onSeek(e.target.value);
+		});
+		document.getElementById('player').addEventListener('click', function () {
+			showToast('🎵 云播放器为演示效果');
+		});
+		loadSong();
+		document.querySelectorAll('.wave').forEach(function (w) {
+			w.classList.add('on');
+		});
+		tick = setInterval(advance, 1000);
+
+		/* ============ 文章轮播 ============ */
+		var pi = 0,
+			ptimer;
+		function renderPost() {
+			var post = searchData[pi];
+			document.getElementById('postsBg').innerHTML =
+				'<img src="' + post.cover + '" alt=""><div class="shade"></div>';
+			document.getElementById('postsTitle').textContent = post.title;
+			document.getElementById('postsDesc').textContent = post.desc;
+			document.getElementById('postsDate').textContent = post.date;
+			var dots = document.getElementById('postsDots');
+			dots.innerHTML = '';
+			searchData.forEach(function (_, i) {
+				var b = document.createElement('button');
+				b.className = 'dot ' + (i === pi ? 'active' : 'inactive');
+				b.addEventListener('click', function (e) {
+					e.stopPropagation();
+					pi = i;
+					renderPost();
+					restartPosts();
+				});
+				dots.appendChild(b);
+			});
+		}
+		function restartPosts() {
+			clearInterval(ptimer);
+			if (searchData.length > 1)
+				ptimer = setInterval(function () {
+					pi = (pi + 1) % searchData.length;
+					renderPost();
+				}, 5000);
+		}
+		renderPost();
+		restartPosts();
+		document.getElementById('postsCarousel').addEventListener('click', function () {
+			if (searchData.length) window.location.href = '/blog/' + searchData[pi].slug;
+		});
+
+		/* ============ 说说轮播 ============ */
+		var ci = 0,
+			ctimer;
+		function renderChatter() {
+			var c = chatters[ci];
+			document.getElementById('chatterBg').innerHTML =
+				'<img src="' + c.cover + '" alt=""><div class="shade"></div>';
+			document.getElementById('chatterTitle').textContent = c.title;
+			document.getElementById('chatterDesc').textContent = c.desc;
+			document.getElementById('chatterTag').textContent = 'Records · ' + c.date;
+			var dots = document.getElementById('chatterDots');
+			dots.innerHTML = '';
+			chatters.forEach(function (_, i) {
+				var b = document.createElement('button');
+				b.className = 'dot ' + (i === ci ? 'active' : 'inactive');
+				b.addEventListener('click', function (e) {
+					e.stopPropagation();
+					ci = i;
+					renderChatter();
+					restartChatter();
+				});
+				dots.appendChild(b);
+			});
+		}
+		function restartChatter() {
+			clearInterval(ctimer);
+			if (chatters.length > 1)
+				ctimer = setInterval(function () {
+					ci = (ci + 1) % chatters.length;
+					renderChatter();
+				}, 6000);
+		}
+		renderChatter();
+		restartChatter();
+		document.getElementById('chatterCarousel').addEventListener('click', function () {
+			showToast('✨ 说说为演示内容');
+		});
+		document.querySelector('.poster').addEventListener('click', function (e) {
+			e.preventDefault();
+			showToast('✨ 照片墙为演示内容');
+		});
+
+		/* ============ 主题切换 ============ */
+		function toggleTheme() {
+			var html = document.documentElement;
+			var isDark = html.getAttribute('data-theme') === 'dark';
+			html.setAttribute('data-theme', isDark ? 'light' : 'dark');
+			document.getElementById('themeLabel').textContent = isDark ? '日间模式' : '夜间模式';
+			document.getElementById('themeDesc').textContent = isDark ? '落樱漫舞的清晨' : '流萤飞舞的深空';
+			try {
+				localStorage.setItem('theme', isDark ? 'light' : 'dark');
+			} catch (e) {
+				/* noop */
+			}
+		}
+		document.getElementById('themeBlock').addEventListener('click', toggleTheme);
+		(function initThemeLabel() {
+			var isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+			document.getElementById('themeLabel').textContent = isDark ? '夜间模式' : '日间模式';
+			document.getElementById('themeDesc').textContent = isDark ? '流萤飞舞的深空' : '落樱漫舞的清晨';
+		})();
+
+		/* ============ 站点仪表盘 ============ */
+		var BUILD = new Date(buildStamp).getTime();
+		setInterval(function () {
+			var now = new Date();
+			document.getElementById('clock').textContent = now.toLocaleTimeString('en-US', {
+				hour12: false,
+				hour: '2-digit',
+				minute: '2-digit',
+				second: '2-digit',
+			});
+			var diff = now.getTime() - BUILD;
+			var days = Math.floor(diff / 86400000),
+				hours = Math.floor((diff % 86400000) / 3600000);
+			document.getElementById('uptime').textContent = days + '天 ' + hours + '小时';
+		}, 1000);
+	</script>
+</Layout>

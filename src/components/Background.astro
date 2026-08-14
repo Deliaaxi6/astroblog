@@ -1,0 +1,113 @@
+<div id="bg" aria-hidden="true">
+	<div id="bg-slider" class="s1"></div>
+	<div id="bg-slider" class="s2"></div>
+	<div id="bg-slider" class="s3"></div>
+	<div id="bg-blur-veil"></div>
+	<div id="bg-gradient"></div>
+	<div class="blob blob-1"></div>
+	<div class="blob blob-2"></div>
+</div>
+
+<style>
+	#bg {
+		position: fixed;
+		inset: 0;
+		z-index: -1;
+		overflow: hidden;
+		pointer-events: none;
+	}
+	#bg-slider {
+		position: absolute;
+		inset: 0;
+		background-size: cover;
+		background-position: center;
+		animation: bgFade 24s ease-in-out infinite;
+		opacity: 0.55;
+	}
+	#bg-slider.s2 {
+		animation-delay: 8s;
+	}
+	#bg-slider.s3 {
+		animation-delay: 16s;
+	}
+	@keyframes bgFade {
+		0%,
+		100% {
+			opacity: 0;
+		}
+		10%,
+		30% {
+			opacity: 0.55;
+		}
+		40%,
+		90% {
+			opacity: 0;
+		}
+	}
+	#bg-blur-veil {
+		position: absolute;
+		inset: 0;
+		background: rgba(255, 255, 255, 0.3);
+		backdrop-filter: blur(12px);
+		-webkit-backdrop-filter: blur(12px);
+	}
+	[data-theme='dark'] #bg-blur-veil {
+		background: rgba(15, 23, 42, 0.4);
+	}
+	#bg-gradient {
+		position: absolute;
+		inset: 0;
+		opacity: 0.6;
+		mix-blend-mode: color;
+		background: linear-gradient(-45deg, #a18cd1, #fbc2eb, #a1c4fd, #c2e9fb);
+		background-size: 400% 400%;
+		animation: gradientMove 15s ease infinite;
+	}
+	@keyframes gradientMove {
+		0% {
+			background-position: 0% 50%;
+		}
+		50% {
+			background-position: 100% 50%;
+		}
+		100% {
+			background-position: 0% 50%;
+		}
+	}
+	.blob {
+		position: absolute;
+		border-radius: 50%;
+		filter: blur(100px);
+	}
+	.blob-1 {
+		top: -10%;
+		left: -10%;
+		width: 40%;
+		height: 40%;
+		background: rgba(255, 255, 255, 0.4);
+	}
+	.blob-2 {
+		bottom: -10%;
+		right: -10%;
+		width: 40%;
+		height: 40%;
+		background: rgba(129, 140, 248, 0.3);
+	}
+	[data-theme='dark'] .blob-1 {
+		background: rgba(49, 46, 129, 0.2);
+	}
+	[data-theme='dark'] .blob-2 {
+		background: rgba(88, 28, 135, 0.3);
+	}
+</style>
+
+<script>
+	const bgImgs = [
+		'https://bu.dusays.com/2026/03/24/69c1e38b4c370.jpg',
+		'https://bu.dusays.com/2026/03/24/69c26fe4acdb5.jpg',
+		'https://bu.dusays.com/2026/03/24/69c26fe4d9486.jpg',
+	];
+	document.querySelectorAll('#bg-slider').forEach((el, i) => {
+		el.style.backgroundImage = `url('${bgImgs[i % bgImgs.length]}')`;
+	});
+</script>

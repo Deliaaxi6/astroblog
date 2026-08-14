@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AstroBlog 图床</title>
+<style>
+:root {
+  --indigo:#6366f1; --indigo-light:#818cf8; --indigo-dark:#4f46e5;
+  --purple:#a855f7; --pink:#ec4899;
+  --card-bg:rgba(30,41,59,.5); --card-border:rgba(255,255,255,.1);
+  --text-main:#fff; --text-sub:#cbd5e1; --text-mute:#94a3b8;
+  --blur:blur(16px);
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  font-family:"Noto Serif SC","Source Han Serif SC","Songti SC","SimSun",serif;
+  background:#020617; color:var(--text-main); min-height:100vh;
+  display:flex; flex-direction:column; align-items:center; padding:48px 20px;
+}
+body::before {
+  content:""; position:fixed; inset:0; z-index:-1; pointer-events:none;
+  background:radial-gradient(800px 500px at 80% -10%, rgba(49,46,129,.5), transparent 60%),
+             radial-gradient(600px 400px at -10% 100%, rgba(88,28,135,.4), transparent 60%);
+}
+h1 { font-size:28px; font-weight:900; letter-spacing:-.02em; margin-bottom:8px;
+  background:linear-gradient(120deg,#e2e8f0,#a5b4fc,#f0abfc);
+  -webkit-background-clip:text; background-clip:text; color:transparent; }
+.sub { color:var(--text-mute); font-size:14px; margin-bottom:32px; font-weight:600; }
+.card {
+  width:100%; max-width:560px; background:var(--card-bg);
+  backdrop-filter:var(--blur); -webkit-backdrop-filter:var(--blur);
+  border:1px solid var(--card-border); border-radius:24px;
+  box-shadow:0 20px 25px -5px rgba(0,0,0,.4); padding:28px;
+}
+.drop {
+  border:2px dashed rgba(129,140,248,.4); border-radius:16px;
+  padding:40px 20px; text-align:center; cursor:pointer;
+  transition:all .25s; background:rgba(99,102,241,.05);
+}
+.drop:hover, .drop.drag { border-color:var(--indigo-light); background:rgba(99,102,241,.12); }
+.drop .big { font-size:40px; margin-bottom:10px; }
+.drop p { color:var(--text-mute); font-size:14px; font-weight:600; }
+.drop p b { color:var(--indigo-light); }
+#fileInput { display:none; }
+.row { display:flex; gap:12px; margin-top:20px; }
+.btn {
+  flex:1; padding:14px 0; border:none; border-radius:14px; cursor:pointer;
+  font-size:16px; font-weight:700; transition:all .25s;
+  font-family:inherit;
+}
+.btn-primary { background:var(--indigo); color:#fff; box-shadow:0 10px 15px -3px rgba(99,102,241,.4); }
+.btn-primary:hover { background:var(--indigo-dark); transform:translateY(-1px); }
+.btn-primary:disabled { opacity:.5; cursor:not-allowed; transform:none; }
+.btn-ghost { background:rgba(51,65,85,.5); color:var(--text-sub); border:1px solid var(--card-border); }
+.btn-ghost:hover { color:var(--indigo-light); }
+#status {
+  margin-top:16px; padding:12px 16px; border-radius:12px; font-size:13px; font-weight:600;
+  background:rgba(51,65,85,.4); color:var(--text-mute); display:none;
+}
+#status.ok { color:#4ade80; display:block; }
+#status.err { color:#f87171; display:block; }
+#status.info { color:var(--text-sub); display:block; }
+#result { display:none; margin-top:20px; }
+#result.show { display:block; }
+#result img {
+  width:100%; max-height:280px; object-fit:contain; border-radius:14px;
+  border:1px solid var(--card-border); background:rgba(2,6,23,.6);
+}
+.linkbox {
+  display:flex; gap:8px; margin-top:12px;
+}
+.linkbox input {
+  flex:1; padding:10px 14px; border-radius:10px; border:1px solid var(--card-border);
+  background:rgba(2,6,23,.6); color:var(--text-sub); font-size:13px; outline:none;
+  font-family:monospace;
+}
+.linkbox button {
+  padding:0 18px; border:none; border-radius:10px; cursor:pointer;
+  background:var(--indigo); color:#fff; font-weight:700; font-family:inherit;
+}
+.linkbox button:hover { background:var(--indigo-dark); }
+@media (max-width:480px){ body{padding:24px 12px;} }
+</style>
+</head>
+<body>
+<h1>AstroBlog 图床</h1>
+<p class="sub">图片直传 Cloudflare R2 · 复制链接即可使用</p>
+
+<div class="card">
+  <div class="drop" id="dropZone">
+    <div class="big">🖼️</div>
+    <p>点击选择或拖拽图片到此处<br><b>JPG / PNG / GIF / WebP / SVG / AVIF</b> · 最大 10MB</p>
+  </div>
+  <input type="file" id="fileInput" accept="image/*">
+  <div class="row">
+    <button class="btn btn-ghost" id="testBtn">测试连接</button>
+    <button class="btn btn-primary" id="uploadBtn" disabled>上传图片</button>
+  </div>
+  <div id="status"></div>
+  <div id="result">
+    <img id="preview" alt="preview">
+    <div class="linkbox">
+      <input id="url" readonly>
+      <button id="copyBtn">复制</button>
+    </div>
+  </div>
+</div>
+
+<script>
+var file = null;
+var drop = document.getElementById('dropZone');
+var input = document.getElementById('fileInput');
+var uploadBtn = document.getElementById('uploadBtn');
+var statusEl = document.getElementById('status');
+var resultEl = document.getElementById('result');
+
+function setStatus(msg, cls) {
+  statusEl.className = cls || 'info';
+  statusEl.textContent = msg;
+  statusEl.style.display = 'block';
+}
+function pick(f) {
+  if (!f) return;
+  if (!/^image\//.test(f.type)) { setStatus('仅支持图片文件', 'err'); return; }
+  if (f.size > 10 * 1024 * 1024) { setStatus('图片超过 10MB 限制', 'err'); return; }
+  file = f;
+  uploadBtn.disabled = false;
+  setStatus('已选择: ' + f.name + ' (' + (f.size / 1024).toFixed(0) + ' KB)', 'info');
+  resultEl.classList.remove('show');
+}
+drop.addEventListener('click', function () { input.click(); });
+input.addEventListener('change', function () { pick(input.files[0]); });
+drop.addEventListener('dragover', function (e) { e.preventDefault(); drop.classList.add('drag'); });
+drop.addEventListener('dragleave', function () { drop.classList.remove('drag'); });
+drop.addEventListener('drop', function (e) {
+  e.preventDefault(); drop.classList.remove('drag');
+  pick(e.dataTransfer.files[0]);
+});
+
+document.getElementById('testBtn').addEventListener('click', function () {
+  setStatus('正在测试 R2 连接...', 'info');
+  fetch('/api/picbed/test')
+    .then(function (r) { return r.json(); })
+    .then(function (d) {
+      setStatus(d.message, d.success ? 'ok' : 'err');
+    })
+    .catch(function () { setStatus('网络异常，无法连接后端', 'err'); });
+});
+
+uploadBtn.addEventListener('click', function () {
+  if (!file) return;
+  uploadBtn.disabled = true;
+  setStatus('正在上传...', 'info');
+  var fd = new FormData();
+  fd.append('file', file);
+  var xhr = new XMLHttpRequest();
+  xhr.open('POST', '/api/picbed/upload');
+  xhr.onload = function () {
+    uploadBtn.disabled = false;
+    try {
+      var d = JSON.parse(xhr.responseText);
+      if (d.success) {
+        setStatus('上传成功 ✓', 'ok');
+        document.getElementById('preview').src = d.url;
+        document.getElementById('url').value = d.url;
+        resultEl.classList.add('show');
+      } else {
+        setStatus(d.message, 'err');
+      }
+    } catch (e) { setStatus('响应解析失败', 'err'); }
+  };
+  xhr.onerror = function () {
+    uploadBtn.disabled = false;
+    setStatus('上传请求失败，检查后端是否运行', 'err');
+  };
+  xhr.send(fd);
+});
+
+document.getElementById('copyBtn').addEventListener('click', function () {
+  var u = document.getElementById('url');
+  u.select();
+  if (navigator.clipboard) navigator.clipboard.writeText(u.value);
+  setStatus('链接已复制到剪贴板 ✓', 'ok');
+});
+</script>
+</body>
+</html>
