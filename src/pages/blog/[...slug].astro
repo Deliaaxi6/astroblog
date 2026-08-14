@@ -1,6 +1,8 @@
 ---
 import { getCollection, render } from 'astro:content';
 import Layout from '../../layouts/Layout.astro';
+import TOC from '../../components/TOC.astro';
+import { readingTime } from '../../lib/reading';
 
 export async function getStaticPaths() {
 	const posts = await getCollection('blog', ({ data }) => !data.draft);
@@ -11,7 +13,8 @@ export async function getStaticPaths() {
 }
 
 const { post } = Astro.props;
-const { Content } = await render(post);
+const { Content, headings } = await render(post);
+const mins = readingTime(post.body);
 
 const formatter = new Intl.DateTimeFormat('zh-CN', {
 	year: 'numeric',
@@ -20,20 +23,56 @@ const formatter = new Intl.DateTimeFormat('zh-CN', {
 });
 ---
 
-<Layout title={post.data.title} description={post.data.description}>
+<Layout title={post.data.title} description={post.data.description} cover={post.data.cover}>
 	<a href="/blog" class="back-link">← 返回文章列表</a>
-	<article class="glass">
-		<header class="post-header">
-			<h1>{post.data.title}</h1>
-			<div class="post-meta">
-				<time datetime={post.data.pubDate.toISOString()}>
-					{formatter.format(post.data.pubDate)}
-				</time>
-				{post.data.tags?.map((tag) => <span class="tag">{tag}</span>)}
+	<article class="glass post-layout">
+		<div class="post-main">
+			<header class="post-header">
+				{post.data.cover && <img class="post-cover" src={post.data.cover} alt={post.data.title} loading="lazy" />}
+				<h1>{post.data.title}</h1>
+				<div class="post-meta">
+					<time datetime={post.data.pubDate.toISOString()}>
+						{formatter.format(post.data.pubDate)}
+					</time>
+					<span class="meta-sep">·</span>
+					<span>约 {mins} 分钟读完</span>
+					{post.data.tags?.map((tag) => <span class="tag">{tag}</span>)}
+				</div>
+			</header>
+			<div class="prose">
+				<Content />
 			</div>
-		</header>
-		<div class="prose">
-			<Content />
 		</div>
+		<aside class="post-side">
+			<TOC headings={headings} />
+		</aside>
 	</article>
 </Layout>
+
+<style>
+	.post-layout {
+		display: grid;
+		grid-template-columns: 1fr;
+		gap: 28px;
+		padding: 28px;
+	}
+	.post-cover {
+		width: 100%;
+		border-radius: 14px;
+		margin-bottom: 22px;
+		border: 1px solid var(--card-border);
+	}
+	.meta-sep {
+		color: var(--text-mute);
+	}
+	@media (min-width: 900px) {
+		.post-layout {
+			grid-template-columns: minmax(0, 1fr) 240px;
+		}
+		.post-side {
+			position: sticky;
+			top: 96px;
+			align-self: start;
+		}
+	}
+</style>

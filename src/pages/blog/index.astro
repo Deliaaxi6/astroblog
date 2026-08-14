@@ -1,6 +1,7 @@
 ---
 import { getCollection } from 'astro:content';
 import Layout from '../../layouts/Layout.astro';
+import { readingTime } from '../../lib/reading';
 
 const posts = (await getCollection('blog', ({ data }) => !data.draft)).sort(
 	(a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf()
@@ -18,15 +19,45 @@ const formatter = new Intl.DateTimeFormat('zh-CN', {
 	<ul class="post-list">
 		{posts.map((post) => (
 			<a href={`/blog/${post.id}`} class="post-card">
-				<h2>{post.data.title}</h2>
-				<div class="post-meta">
-					<time datetime={post.data.pubDate.toISOString()}>
-						{formatter.format(post.data.pubDate)}
-					</time>
-					{post.data.tags?.slice(0, 3).map((tag) => <span class="tag">{tag}</span>)}
+				{post.data.cover && (
+					<img class="post-thumb" src={post.data.cover} alt={post.data.title} loading="lazy" />
+				)}
+				<div class="post-body">
+					<h2>{post.data.title}</h2>
+					<div class="post-meta">
+						<time datetime={post.data.pubDate.toISOString()}>
+							{formatter.format(post.data.pubDate)}
+						</time>
+						<span>· 约 {readingTime(post.body)} 分钟</span>
+						{post.data.tags?.slice(0, 3).map((tag) => <span class="tag">{tag}</span>)}
+					</div>
+					{post.data.description && <p>{post.data.description}</p>}
 				</div>
-				{post.data.description && <p>{post.data.description}</p>}
 			</a>
 		))}
 	</ul>
 </Layout>
+
+<style>
+	.post-card {
+		display: grid;
+		grid-template-columns: 1fr;
+		gap: 14px;
+	}
+	.post-thumb {
+		width: 100%;
+		height: 160px;
+		object-fit: cover;
+		border-radius: 12px;
+		border: 1px solid var(--card-border);
+	}
+	@media (min-width: 640px) {
+		.post-card {
+			grid-template-columns: 200px 1fr;
+			align-items: start;
+		}
+		.post-thumb {
+			height: 112px;
+		}
+	}
+</style>

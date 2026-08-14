@@ -1,0 +1,62 @@
+---
+interface Props {
+	headings: { depth: number; slug: string; text: string }[];
+}
+
+const { headings } = Astro.props;
+const items = headings.filter((h) => h.depth >= 2 && h.depth <= 3);
+---
+
+{
+	items.length > 1 && (
+		<nav class="toc glass">
+			<div class="toc-title">目录</div>
+			<ul>
+				{items.map((h) => (
+					<li class:list={{ 'toc-h3': h.depth === 3 }}>
+						<a href={`#${h.slug}`}>{h.text}</a>
+					</li>
+				))}
+			</ul>
+		</nav>
+	)
+}
+
+<style>
+	.toc {
+		padding: 16px 18px;
+		border-radius: 14px;
+		font-size: 13px;
+	}
+	.toc-title {
+		font-weight: 700;
+		color: var(--text-sub);
+		margin-bottom: 10px;
+		letter-spacing: 0.08em;
+	}
+	.toc ul {
+		list-style: none;
+		display: flex;
+		flex-direction: column;
+		gap: 6px;
+	}
+	.toc a {
+		display: block;
+		color: var(--text-mute);
+		text-decoration: none;
+		padding: 3px 0 3px 8px;
+		border-left: 2px solid transparent;
+		transition: all 0.2s;
+		line-height: 1.5;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+	.toc a:hover {
+		color: var(--indigo-light);
+		border-left-color: var(--indigo-light);
+	}
+	.toc-h3 a {
+		padding-left: 20px;
+	}
+</style>

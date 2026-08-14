@@ -2,9 +2,16 @@
 interface Props {
 	title?: string;
 	description?: string;
+	cover?: string;
 }
 
-const { title = '我的博客', description = '用 Astro 构建的个人博客' } = Astro.props;
+const { title = '我的博客', description = '用 Astro 构建的个人博客', cover } = Astro.props;
+const site = import.meta.env.SITE || 'http://localhost:4321';
+const coverUrl = cover
+	? cover.startsWith('http')
+		? cover
+		: new URL(cover, site).href
+	: undefined;
 import Background from '../components/Background.astro';
 import '../styles/global.css';
 ---
@@ -23,6 +30,7 @@ import '../styles/global.css';
 		<meta property="og:url" content={Astro.url.href} />
 		<meta property="og:site_name" content="我的博客" />
 		<meta name="twitter:card" content="summary" />
+		{coverUrl && <meta property="og:image" content={coverUrl} />}
 		<script is:inline>
 			(() => {
 				try {
