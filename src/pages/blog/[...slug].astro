@@ -2,6 +2,7 @@
 import { getCollection, render } from 'astro:content';
 import Layout from '../../layouts/Layout.astro';
 import TOC from '../../components/TOC.astro';
+import Gitalk from '../../components/Gitalk.astro';
 import { readingTime } from '../../lib/reading';
 
 export async function getStaticPaths() {
@@ -42,6 +43,7 @@ const formatter = new Intl.DateTimeFormat('zh-CN', {
 			<div class="prose">
 				<Content />
 			</div>
+			<Gitalk pageId={post.id} />
 		</div>
 		<aside class="post-side">
 			<TOC headings={headings} />
