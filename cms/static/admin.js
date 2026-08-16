@@ -112,6 +112,92 @@
     setStatus('本地直写模式：内容已写入仓库，站点构建后即生效。', 'info'));
   renderOps();
 
+  /* ============ 同步中心 ============ */
+  const renderSyncOut = (text, type = 'ok') => {
+    const el = $('#syncOutput');
+    el.textContent = text;
+    el.className = 'sync-output ' + type;
+  };
+  let buildPoll = null;
+  const stopBuildPoll = () => {
+    if (buildPoll) { clearInterval(buildPoll); buildPoll = null; }
+    $('#syncRebuild').textContent = '① 重建博客';
+  };
+  const pollBuild = () => {
+    stopBuildPoll();
+    buildPoll = setInterval(async () => {
+      try {
+        const j = await postJson('/api/sync/status');
+        const st = j.status || {};
+        if (st.running) {
+          $('#syncRebuild').textContent = '构建中…';
+          renderSyncOut('构建运行中…\n' + (j.logTail || ''), 'run');
+          return;
+        }
+        stopBuildPoll();
+        const ok = st.last_exit === 0;
+        setStatus(ok ? '博客重建完成' : '博客重建失败（exit ' + st.last_exit + '）', ok ? 'ok' : 'err');
+        addOp('博客重建：' + (ok ? '成功' : '失败'));
+        renderSyncOut((ok ? '构建成功 ✓\n' : '构建失败（exit ' + st.last_exit + '）\n') + (j.logTail || ''), ok ? 'ok' : 'err');
+      } catch (e) {
+        stopBuildPoll();
+        renderSyncOut('状态查询失败：' + e.message, 'err');
+      }
+    }, 1000);
+  };
+  $('#syncRebuild').addEventListener('click', async () => {
+    try {
+      const j = await postJson('/api/sync/rebuild');
+      if (j.running) renderSyncOut('构建已启动…', 'run');
+      pollBuild();
+    } catch (e) { renderSyncOut('启动失败：' + e.message, 'err'); }
+  });
+  $('#syncImages').addEventListener('click', async () => {
+    try {
+      const j = await postJson('/api/sync/images');
+      setStatus(j.message, 'ok');
+      addOp('图片资源同步');
+      const lines = [
+        `复制 ${(j.copied || []).length} 张 → public/images/`,
+        `重写引用 ${j.rewritten || 0} 处`,
+        `跳过 ${(j.skipped || []).length} 项`,
+      ];
+      (j.copied || []).forEach((c) => lines.push('  + ' + c));
+      (j.skipped || []).forEach((s) => lines.push('  - ' + s));
+      (j.errors || []).forEach((e) => lines.push('  ✗ ' + e));
+      renderSyncOut(lines.join('\n'), (j.errors || []).length ? 'err' : 'ok');
+    } catch (e) { renderSyncOut('图片同步失败：' + e.message, 'err'); }
+  });
+  $('#syncImport').addEventListener('click', async () => {
+    try {
+      const j = await postJson('/api/sync/import');
+      setStatus(j.message, 'ok');
+      addOp('博客导入草稿箱');
+      const lines = [
+        `导入草稿 ${(j.imported || []).length} 个`,
+        `跳过（已有草稿）${(j.skipped || []).length} 个`,
+      ];
+      (j.imported || []).forEach((i) => lines.push('  + ' + i));
+      (j.skipped || []).forEach((s) => lines.push('  - ' + s));
+      renderSyncOut(lines.join('\n'), 'ok');
+    } catch (e) { renderSyncOut('导入失败：' + e.message, 'err'); }
+  });
+  $('#syncLink').addEventListener('click', async () => {
+    try {
+      const j = await postJson('/api/sync/link');
+      setStatus(j.message, 'ok');
+      addOp('动态关联校验');
+      const lines = [`检查动态 ${j.checked || 0} 篇`];
+      if ((j.broken || []).length) {
+        lines.push('失效引用 ' + j.broken.length + ' 处：');
+        (j.broken || []).forEach((b) => lines.push('  ✗ ' + b));
+      } else {
+        lines.push('所有 /blog/ 引用均有效 ✓');
+      }
+      renderSyncOut(lines.join('\n'), (j.broken || []).length ? 'err' : 'ok');
+    } catch (e) { renderSyncOut('关联校验失败：' + e.message, 'err'); }
+  });
+
   /* ============ 仪表盘 ============ */
   async function loadDash() {
     const grid = $('#statGrid');
@@ -206,6 +292,7 @@
           <div class="edit-cap" style="margin-top:12px">CONTENT / 实时预览</div>
           <div style="display:flex;gap:8px;margin-bottom:8px">
             <button class="btn btn-ghost btn-sm" onclick="toggleMdView()" id="mdViewBtn">预览开</button>
+            <button class="btn btn-ghost btn-sm" id="insImgBtn">插图</button>
           </div>
           <textarea id="p-content" placeholder="# 开始书写…">${esc(post.content || '')}</textarea>
         </div>
@@ -231,6 +318,39 @@
     render();
     $('#savePostBtn').addEventListener('click', () => savePost(false));
     $('#savePostPubBtn').addEventListener('click', () => savePost(true));
+    $('#insImgBtn').addEventListener('click', () => {
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = 'image/*';
+      input.onchange = async () => {
+        const file = input.files && input.files[0];
+        if (!file) return;
+        const fd = new FormData();
+        fd.append('file', file);
+        const btn = $('#insImgBtn');
+        btn.disabled = true;
+        btn.textContent = '上传中…';
+        try {
+          const r = await fetch('/api/local-images/upload', { method: 'POST', body: fd });
+          const j = await r.json();
+          if (!j.success) throw new Error(j.message || '上传失败');
+          const ta = $('#p-content');
+          const pos = ta.selectionStart ?? ta.value.length;
+          const md = `![${file.name.replace(/\.[^.]+$/, '')}](${j.url})\n`;
+          ta.value = ta.value.slice(0, pos) + md + ta.value.slice(ta.selectionEnd ?? pos);
+          ta.focus();
+          ta.selectionStart = ta.selectionEnd = pos + md.length;
+          setStatus('图片已插入：' + j.filename, 'ok');
+          addOp('插图：' + j.filename);
+        } catch (e) {
+          setStatus('插图失败：' + e.message, 'err');
+        } finally {
+          btn.disabled = false;
+          btn.textContent = '插图';
+        }
+      };
+      input.click();
+    });
   }
   function toggleMdView() {
     const b = $('#mdViewBtn');
@@ -349,45 +469,163 @@
   }
   function backToMoments() { curMomentId = null; loadMoments(); }
 
-  /* ============ 数据类（友链/项目/相册） ============ */
-  const DATA_MAP = {
-    friends: ['friends', '友链'],
-    projects: ['projects', '项目'],
-    albums: ['albums', '相册']
+  /* ============ 数据类（友链/项目/相册）表单式管理 ============ */
+  const DATA_CFG = {
+    friends: {
+      label: '友链',
+      titleKey: 'name',
+      fields: [
+        { k: 'id', label: 'ID', ph: 'friend-1' },
+        { k: 'name', label: '名称', required: true },
+        { k: 'url', label: '链接', ph: 'https://' },
+        { k: 'description', label: '描述', type: 'textarea', rows: 2 },
+        { k: 'avatar', label: '头像链接' },
+        { k: 'themeColor', label: '主题色', ph: '#3b82f6' },
+      ],
+    },
+    projects: {
+      label: '项目',
+      titleKey: 'name',
+      fields: [
+        { k: 'id', label: 'ID', ph: 'project-1' },
+        { k: 'name', label: '名称', required: true },
+        { k: 'description', label: '描述', type: 'textarea', rows: 2 },
+        { k: 'icon', label: '图标', ph: 'emoji 或图标名' },
+        { k: 'url', label: '链接', ph: 'https://' },
+        { k: 'date', label: '日期', ph: '2024-01' },
+      ],
+    },
+    albums: {
+      label: '相册',
+      titleKey: 'title',
+      fields: [
+        { k: 'id', label: 'ID', ph: 'album-1' },
+        { k: 'title', label: '标题', required: true },
+        { k: 'description', label: '描述', type: 'textarea', rows: 2 },
+        { k: 'cover', label: '封面链接' },
+        { k: 'date', label: '日期', ph: '2024-01' },
+      ],
+      photos: { label: '照片列表', tip: '每行一张：图片URL，可选 | 说明，如 https://x.com/a.png | 校园一角' },
+    },
   };
+  const dataCache = { friends: [], projects: [], albums: [] };
+  let curDataKind = null;
+  let curDataIdx = null;
+
   async function loadDataTab(kind) {
-    const [key, label] = DATA_MAP[kind];
-    const el = $('#' + kind + 'Json');
-    el.disabled = true;
-    el.value = '读取中…';
+    curDataKind = kind;
+    const cfg = DATA_CFG[kind];
+    const listEl = $('#dataList-' + kind);
+    const editorEl = $('#dataEditor-' + kind);
+    listEl.style.display = '';
+    editorEl.style.display = 'none';
+    listEl.innerHTML = '<div class="empty">加载中…</div>';
     try {
       const j = await getJson('/api/site-data/all');
-      const arr = j[key] || [];
-      el.value = JSON.stringify(arr, null, 2);
-      setStatus(`${label}数据已读取（${arr.length} 条）`, 'ok');
+      dataCache[kind] = j[kind] || [];
+      renderDataList(kind);
+      setStatus(`${cfg.label}数据已读取（${dataCache[kind].length} 条）`, 'ok');
     } catch (e) {
-      el.value = '// 读取失败：' + e.message;
-      setStatus('读取失败：' + e.message, 'err');
-    } finally {
-      el.disabled = false;
+      listEl.innerHTML = '<div class="empty">加载失败：' + esc(e.message) + '</div>';
     }
   }
-  async function saveDataTab(kind) {
-    const [key, label] = DATA_MAP[kind];
-    const el = $('#' + kind + 'Json');
-    let arr;
-    try {
-      arr = JSON.parse(el.value);
-      if (!Array.isArray(arr)) throw new Error('必须是数组');
-    } catch (e) {
-      setStatus('JSON 格式错误：' + e.message, 'err');
-      return;
+
+  function renderDataList(kind) {
+    const cfg = DATA_CFG[kind];
+    const arr = dataCache[kind];
+    const el = $('#dataList-' + kind);
+    el.innerHTML = `
+      <div class="sheet-head" style="margin-bottom:10px">
+        <h2 style="font-size:15px">${cfg.label}数据 <span class="no">${arr.length} 条</span></h2>
+        <button class="btn btn-hi btn-sm" onclick="newDataItem('${kind}')">＋ 新建${cfg.label}</button>
+      </div>
+      ${arr.length ? arr.map((x, i) => `
+        <div class="list-item">
+          <span class="list-idx">NO.${pad(i + 1)}</span>
+          <div class="list-main">
+            <h4>${esc(x[cfg.titleKey] || '(未命名)')}</h4>
+            <p>${esc(String(x.url || x.cover || x.id || '').slice(0, 60))}</p>
+          </div>
+          <div class="list-actions">
+            <button class="btn btn-ghost btn-sm" onclick="openDataItem('${kind}', ${i})">编辑</button>
+            <button class="btn btn-seal btn-sm" onclick="delDataItem('${kind}', ${i})">删除</button>
+          </div>
+        </div>`).join('') : '<div class="empty">还没有' + cfg.label + '数据。</div>'}`;
+  }
+
+  function newDataItem(kind) { openDataItem(kind, null); }
+  function openDataItem(kind, idx) {
+    curDataKind = kind;
+    curDataIdx = idx;
+    const cfg = DATA_CFG[kind];
+    const item = idx === null ? {} : (dataCache[kind][idx] || {});
+    $('#dataList-' + kind).style.display = 'none';
+    const ed = $('#dataEditor-' + kind);
+    ed.style.display = '';
+    const rows = cfg.fields.map((f) => {
+      const v = item[f.k] ?? '';
+      const input = f.type === 'textarea'
+        ? `<textarea class="field" id="df-${f.k}" rows="${f.rows || 2}">${esc(v)}</textarea>`
+        : `<input class="field" id="df-${f.k}" placeholder="${esc(f.ph || '')}" value="${esc(v)}">`;
+      return `<div class="field"><label>${f.label}</label>${input}</div>`;
+    }).join('');
+    const photos = cfg.photos ? `
+      <div class="field">
+        <label>${cfg.photos.label}</label>
+        <textarea class="field code" id="df-photos" rows="6" placeholder="${esc(cfg.photos.tip)}">${esc((item.photos || []).map((p) => typeof p === 'string' ? p : [p.url, p.caption].filter(Boolean).join(' | ')).join('\n'))}</textarea>
+        <p class="sheet-tip">${esc(cfg.photos.tip)}</p>
+      </div>` : '';
+    ed.innerHTML = `
+      <div class="sheet-head">
+        <h2>${idx === null ? '新建' : '编辑'}${cfg.label} <span class="no">FILE / EDIT</span></h2>
+        <button class="btn btn-ghost btn-sm" onclick="loadDataTab('${kind}')">← 返回列表</button>
+      </div>
+      ${rows}${photos}
+      <div class="row"><button class="btn btn-hi" id="saveDataItemBtn">保存</button></div>`;
+    $('#saveDataItemBtn').addEventListener('click', saveDataItem);
+  }
+
+  async function saveDataItem() {
+    const kind = curDataKind;
+    const cfg = DATA_CFG[kind];
+    const item = {};
+    cfg.fields.forEach((f) => {
+      const el = $('#df-' + f.k);
+      if (el) item[f.k] = el.value.trim();
+    });
+    const missing = cfg.fields.find((f) => f.required && !item[f.k]);
+    if (missing) { setStatus('请填写' + missing.label, 'err'); return; }
+    if (cfg.photos) {
+      item.photos = $('#df-photos').value.split('\n').map((l) => l.trim()).filter(Boolean).map((l) => {
+        const parts = l.split('|');
+        const url = parts.shift().trim();
+        const caption = parts.join('|').trim();
+        return caption ? { url, caption } : url;
+      });
     }
+    if (!item.id) item.id = kind.slice(0, -1) + '_' + Date.now().toString(36);
+    const arr = dataCache[kind];
+    if (curDataIdx === null) arr.push(item);
+    else arr[curDataIdx] = item;
     try {
-      await postJson('/api/site-data/sync', { target: key, items: arr });
-      setStatus(`${label}已保存（${arr.length} 条）`, 'ok');
-      addOp(`更新${label}数据：${arr.length} 条`);
+      await postJson('/api/site-data/sync', { target: kind, items: arr });
+      setStatus(`${cfg.label}已保存（${arr.length} 条）`, 'ok');
+      addOp(`更新${cfg.label}数据：${arr.length} 条`);
+      loadDataTab(kind);
     } catch (e) { setStatus('保存失败：' + e.message, 'err'); }
+  }
+
+  async function delDataItem(kind, idx) {
+    if (!confirm('确定删除这条记录？')) return;
+    const cfg = DATA_CFG[kind];
+    const arr = dataCache[kind];
+    arr.splice(idx, 1);
+    try {
+      await postJson('/api/site-data/sync', { target: kind, items: arr });
+      setStatus(`${cfg.label}记录已删除`, 'ok');
+      addOp(`删除${cfg.label}记录`);
+      loadDataTab(kind);
+    } catch (e) { setStatus('删除失败：' + e.message, 'err'); }
   }
 
   /* ============ 图床 ============ */
@@ -549,7 +787,8 @@
   Object.assign(window, {
     goTab, newPost, openPost, backToPosts, delPost, toggleMdView,
     newMoment, openMoment, backToMoments, delMoment,
-    loadDataTab, saveDataTab, addMusic, delMusic, saveMusic, loadMusicTab
+    loadDataTab, openDataItem, newDataItem, saveDataItem, delDataItem,
+    addMusic, delMusic, saveMusic, loadMusicTab
   });
 
   /* ============ 初始化 ============ */

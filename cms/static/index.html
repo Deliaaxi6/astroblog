@@ -387,6 +387,17 @@ button { font-family:inherit; }
 }
 .linkbox button:hover { background:#eede63; }
 
+/* ===== 同步中心 ===== */
+.sync-grid { display:flex; flex-wrap:wrap; gap:10px; margin-bottom:14px; }
+.sync-output {
+  max-height:260px; overflow:auto; margin:0; padding:12px 14px;
+  border:1px solid var(--line); border-radius:8px;
+  background:var(--sheet-2); color:var(--sub);
+  font-family:var(--mono); font-size:12px; line-height:1.7; white-space:pre-wrap;
+}
+.sync-output.err { border-color:#d05a50; color:#b02e26; }
+.sync-output.run { border-color:var(--hi); color:var(--ink); }
+
 @media (max-width:980px) {
   .shell-body { flex-direction:column; }
   .sidebar { width:100%; position:static; }
@@ -474,6 +485,18 @@ button { font-family:inherit; }
           </div>
           <div id="recentPosts"><div class="empty">读取中…</div></div>
         </div>
+        <div class="sheet">
+          <div class="sheet-head">
+            <h2>同步中心 <span class="no">FILE / SYNC CENTER</span></h2>
+          </div>
+          <div class="sync-grid">
+            <button class="btn btn-hi btn-sm" id="syncRebuild">① 重建博客</button>
+            <button class="btn btn-ghost btn-sm" id="syncImages">② 图片资源同步</button>
+            <button class="btn btn-ghost btn-sm" id="syncImport">③ 博客导入草稿箱</button>
+            <button class="btn btn-ghost btn-sm" id="syncLink">④ 动态关联校验</button>
+          </div>
+          <pre class="sync-output" id="syncOutput">就绪。点击上方按钮执行同步操作。</pre>
+        </div>
       </section>
 
       <section class="panel" id="panel-posts">
@@ -511,39 +534,18 @@ button { font-family:inherit; }
       </section>
 
       <section class="panel" id="panel-friends">
-        <div class="sheet">
-          <div class="sheet-head">
-            <h2>友链数据 <span class="no">FILE / FRIENDS</span></h2>
-            <button class="btn btn-ghost btn-sm" onclick="loadDataTab('friends')">↻ 重新读取</button>
-          </div>
-          <p class="sheet-tip" style="margin-bottom:12px">编辑下方 JSON 数组，保存后覆盖 src/data/friends.ts</p>
-          <textarea class="field code" id="friendsJson" rows="12" style="width:100%;border-radius:6px;border:1px solid rgba(35,35,43,.26);background:#fff;color:#23232b;font-family:Consolas,Menlo,monospace;font-size:12px;line-height:1.6;padding:11px 14px;resize:vertical;outline:none"></textarea>
-          <div class="row"><button class="btn btn-hi" onclick="saveDataTab('friends')">保存更改</button></div>
-        </div>
+        <div class="sheet" id="dataList-friends"><div class="empty">加载中…</div></div>
+        <div class="sheet" id="dataEditor-friends" style="display:none"></div>
       </section>
 
       <section class="panel" id="panel-projects">
-        <div class="sheet">
-          <div class="sheet-head">
-            <h2>项目数据 <span class="no">FILE / PROJECTS</span></h2>
-            <button class="btn btn-ghost btn-sm" onclick="loadDataTab('projects')">↻ 重新读取</button>
-          </div>
-          <p class="sheet-tip" style="margin-bottom:12px">编辑下方 JSON 数组，保存后覆盖 src/data/projects.ts</p>
-          <textarea class="field code" id="projectsJson" rows="12" style="width:100%;border-radius:6px;border:1px solid rgba(35,35,43,.26);background:#fff;color:#23232b;font-family:Consolas,Menlo,monospace;font-size:12px;line-height:1.6;padding:11px 14px;resize:vertical;outline:none"></textarea>
-          <div class="row"><button class="btn btn-hi" onclick="saveDataTab('projects')">保存更改</button></div>
-        </div>
+        <div class="sheet" id="dataList-projects"><div class="empty">加载中…</div></div>
+        <div class="sheet" id="dataEditor-projects" style="display:none"></div>
       </section>
 
       <section class="panel" id="panel-albums">
-        <div class="sheet">
-          <div class="sheet-head">
-            <h2>相册数据 <span class="no">FILE / ALBUMS</span></h2>
-            <button class="btn btn-ghost btn-sm" onclick="loadDataTab('albums')">↻ 重新读取</button>
-          </div>
-          <p class="sheet-tip" style="margin-bottom:12px">编辑下方 JSON 数组，保存后覆盖 src/data/albums.ts</p>
-          <textarea class="field code" id="albumsJson" rows="12" style="width:100%;border-radius:6px;border:1px solid rgba(35,35,43,.26);background:#fff;color:#23232b;font-family:Consolas,Menlo,monospace;font-size:12px;line-height:1.6;padding:11px 14px;resize:vertical;outline:none"></textarea>
-          <div class="row"><button class="btn btn-hi" onclick="saveDataTab('albums')">保存更改</button></div>
-        </div>
+        <div class="sheet" id="dataList-albums"><div class="empty">加载中…</div></div>
+        <div class="sheet" id="dataEditor-albums" style="display:none"></div>
       </section>
 
       <section class="panel" id="panel-picbed">
