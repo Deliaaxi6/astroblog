@@ -118,6 +118,8 @@ h1 { font-size:26px; font-weight:900; letter-spacing:-.02em; margin-bottom:6px;
 .md-preview img { max-width:100%; border-radius:10px; margin:8px 0; }
 .md-preview a { color:var(--indigo-light); }
 .md-preview hr { border:none; border-top:1px solid var(--card-border); margin:16px 0; }
+.music-cover { width:44px; height:44px; border-radius:10px; object-fit:cover; flex-shrink:0; }
+.list-item .music-cover { display:block; }
 .empty { color:var(--text-mute); font-size:13px; text-align:center; padding:24px 0; font-weight:600; }
 #picbedPanel .drop {
   border:2px dashed rgba(129,140,248,.4); border-radius:16px;
@@ -153,6 +155,7 @@ h1 { font-size:26px; font-weight:900; letter-spacing:-.02em; margin-bottom:6px;
     <button data-tab="projects">🚀 项目</button>
     <button data-tab="albums">📸 相册</button>
     <button data-tab="picbed">🖼️ 图床</button>
+    <button data-tab="music">🎵 音乐</button>
   </nav>
 
   <section class="panel show" id="panel-posts">
@@ -234,6 +237,20 @@ h1 { font-size:26px; font-weight:900; letter-spacing:-.02em; margin-bottom:6px;
           <button id="copyBtn">复制</button>
         </div>
       </div>
+    </div>
+  </section>
+
+  <section class="panel" id="panel-music">
+    <div class="card">
+      <div class="card-head"><h2>首页播放器歌单</h2>
+        <button class="btn btn-ghost btn-sm" onclick="loadMusicTab(true)">↻ 重新读取</button></div>
+      <p class="sub" style="margin-bottom:12px">歌曲来自网易云。获取 ID：网易云网页版播放/分享页 URL 中的数字，如 <code>music.163.com/#/song?id=1809646618</code></p>
+      <div class="row">
+        <input class="field" id="musicIdInput" placeholder="粘贴网易云歌曲 ID，如 1809646618" style="flex:1">
+        <button class="btn btn-primary" onclick="addMusic()">＋ 添加</button>
+      </div>
+      <div id="musicList"><div class="empty">加载中…</div></div>
+      <div class="row"><button class="btn btn-primary" onclick="saveMusic()">💾 保存歌单</button></div>
     </div>
   </section>
 

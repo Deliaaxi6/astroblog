@@ -113,8 +113,70 @@ tabs.forEach(function (btn) {
     if (btn.dataset.tab === 'friends') loadDataTab('friends');
     if (btn.dataset.tab === 'projects') loadDataTab('projects');
     if (btn.dataset.tab === 'albums') loadDataTab('albums');
+    if (btn.dataset.tab === 'music' && !musicListLoaded) loadMusicTab();
   });
 });
+
+/* ============ 音乐歌单 ============ */
+var musicListLoaded = false;
+var musicCache = [];
+
+function loadMusicTab(force) {
+  musicListLoaded = true;
+  var box = document.getElementById('musicList');
+  box.innerHTML = '<div class="empty">加载中…</div>';
+  getApi('/api/music/playlist').then(function (d) {
+    if (!d.success) { box.innerHTML = '<div class="empty">' + esc(d.message) + '</div>'; return; }
+    if (!d.ids.length) { musicCache = []; box.innerHTML = '<div class="empty">歌单为空，添加一首歌曲吧</div>'; return; }
+    getApi('/api/music?ids=' + d.ids.join(',')).then(function (list) {
+      musicCache = (list || []).map(function (s) {
+        return { id: s.id, name: s.name || '未知歌曲', artist: s.artist || '', cover: s.cover || '' };
+      });
+      renderMusicList();
+    }).catch(function () { box.innerHTML = '<div class="empty">网易云元数据加载失败（网络问题），可稍后重试</div>'; });
+  }).catch(function () { box.innerHTML = '<div class="empty">加载失败</div>'; });
+}
+
+function renderMusicList() {
+  var box = document.getElementById('musicList');
+  if (!musicCache.length) { box.innerHTML = '<div class="empty">歌单为空</div>'; return; }
+  box.innerHTML = musicCache.map(function (s, i) {
+    return '<div class="list-item">' +
+      '<img class="music-cover" src="' + esc(s.cover) + '" alt="">' +
+      '<div class="list-main"><h4>' + esc(s.name) + '</h4>' +
+      '<p>' + esc(s.artist) + ' <span class="badge date">' + esc(s.id) + '</span></p></div>' +
+      '<div class="list-actions"><button class="btn btn-danger btn-sm" onclick="removeMusic(' + i + ')">移除</button></div>' +
+      '</div>';
+  }).join('');
+}
+
+function addMusic() {
+  var inp = document.getElementById('musicIdInput');
+  var id = (inp.value || '').trim();
+  if (!id) { setStatus('请输入歌曲 ID', 'err'); return; }
+  getApi('/api/music?ids=' + encodeURIComponent(id)).then(function (list) {
+    var s = list && list[0];
+    if (!s || s.error) { setStatus('未找到该歌曲（ID 无效或网络异常）', 'err'); return; }
+    if (musicCache.some(function (x) { return x.id === s.id; })) { setStatus('该歌曲已在歌单中', 'info'); return; }
+    musicCache.push({ id: s.id, name: s.name, artist: s.artist, cover: s.cover });
+    inp.value = '';
+    renderMusicList();
+    setStatus('已添加：' + s.name, 'ok');
+  });
+}
+
+function removeMusic(i) {
+  musicCache.splice(i, 1);
+  renderMusicList();
+  setStatus('已从歌单移除，点击"保存歌单"生效', 'info');
+}
+
+function saveMusic() {
+  if (!musicCache.length) { setStatus('歌单为空，至少保留一首', 'err'); return; }
+  api('/api/music/playlist', { ids: musicCache.map(function (s) { return s.id; }) }).then(function (d) {
+    setStatus(d.success ? d.message : (d.message || '保存失败'), d.success ? 'ok' : 'err');
+  });
+}
 
 /* ============ 文章 ============ */
 var postListLoaded = false;

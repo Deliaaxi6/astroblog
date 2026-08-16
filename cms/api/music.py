@@ -1,3 +1,6 @@
+import os
+import re
+import json
 import time
 import urllib.parse
 import urllib.request
@@ -5,6 +8,11 @@ from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse
 
 router = APIRouter()
+
+BLOG_ROOT = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", ".."))
+DATA_DIR = os.path.join(BLOG_ROOT, "src", "data")
+MUSIC_FILE = os.path.join(DATA_DIR, "music.ts")
+MUSIC_TS_RE = re.compile(r"export const musicIds: string\[\] = (\[[\s\S]*?\]);")
 
 NET_EASE_HEADERS = {
     "User-Agent": (
@@ -70,3 +78,42 @@ async def query_music(request: Request):
         results.append(_fetch_song(sid))
         time.sleep(0.1)
     return JSONResponse(results)
+
+
+def _read_music_ids():
+    if not os.path.exists(MUSIC_FILE):
+        return []
+    with open(MUSIC_FILE, "r", encoding="utf-8") as f:
+        content = f.read()
+    m = MUSIC_TS_RE.search(content)
+    if not m:
+        return []
+    try:
+        ids = json.loads(m.group(1))
+        return ids if isinstance(ids, list) else []
+    except Exception:
+        return []
+
+
+@router.get("/playlist")
+async def read_playlist():
+    return {"success": True, "ids": _read_music_ids()}
+
+
+@router.post("/playlist")
+async def save_playlist(request: Request):
+    try:
+        payload = await request.json()
+    except Exception:
+        return {"success": False, "message": "JSON 解析失败"}
+
+    ids = payload.get("ids", [])
+    if not isinstance(ids, list) or not all(isinstance(x, str) and x.strip() for x in ids):
+        return {"success": False, "message": "数据格式非法，预期为字符串数组"}
+
+    ids = [x.strip() for x in ids]
+    os.makedirs(DATA_DIR, exist_ok=True)
+    json_str = json.dumps(ids, ensure_ascii=False, indent=1)
+    with open(MUSIC_FILE, "w", encoding="utf-8") as f:
+        f.write(f"// 本文件由 CMS 控制台自动生成，请勿手动修改\nexport const musicIds: string[] = {json_str};\n")
+    return {"success": True, "message": f"已保存 {len(ids)} 首歌曲，重新构建后生效"}
