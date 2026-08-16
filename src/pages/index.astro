@@ -14,20 +14,17 @@ const formatter = new Intl.DateTimeFormat('zh-CN', {
 	day: '2-digit',
 });
 
-const covers = [
-	'https://bu.dusays.com/2026/03/24/69c1e38b346cb.jpg',
-	'https://bu.dusays.com/2026/03/31/69cb69bb530d8.jpg',
-	'https://bu.dusays.com/2026/03/24/69c26fe4acdb5.jpg',
-	'https://bu.dusays.com/2026/03/24/69c1e38b4c370.jpg',
-];
+const monthFormatter = new Intl.DateTimeFormat('zh-CN', {
+	year: 'numeric',
+	month: '2-digit',
+});
 
-const searchData = posts.map((p, i) => ({
+const searchData = posts.map((p) => ({
 	slug: p.id,
 	title: p.data.title,
 	desc: p.data.description ?? '',
 	date: formatter.format(p.data.pubDate),
 	tags: p.data.tags ?? [],
-	cover: covers[i % covers.length],
 }));
 
 const chatters = (await getCollection('moments'))
@@ -36,25 +33,35 @@ const chatters = (await getCollection('moments'))
 		const body = (m.body ?? '').trim().replace(/\r\n/g, '\n');
 		const firstLine = body.split('\n').find((l) => l.trim()) ?? '一条新的说说';
 		return {
-			title: firstLine.slice(0, 24),
-			desc: body.replace(/\s+/g, ' ').slice(0, 90),
-			cover: m.data.images?.[0] ?? covers[0],
+			title: firstLine.slice(0, 48),
 			date: formatter.format(m.data.date),
 		};
 	});
 
+const latestChatter = chatters[0] ?? null;
+
+const archives = posts.reduce((acc, p) => {
+	const key = monthFormatter.format(p.data.pubDate);
+	const hit = acc.find((a) => a.key === key);
+	if (hit) hit.count++;
+	else acc.push({ key, count: 1 });
+	return acc;
+}, []);
+
+const buildDate = new Date().toISOString().slice(0, 10);
 const buildStamp = '2026-08-14T00:00:00';
+const lead = posts[0] ?? null;
 ---
 
-<Layout title="我的博客">
-	<!-- 搜索框 -->
-	<div class="search-wrap" id="searchWrap">
-		<form onsubmit="return false;">
+<Layout title="纸上拾光">
+	<!-- 搜索弹层 -->
+	<div class="search-overlay" id="searchOverlay" hidden>
+		<form class="search-box" onsubmit="return false;">
 			<input
 				class="search-input"
 				id="searchInput"
 				type="text"
-				placeholder="搜寻标题、描述或标签..."
+				placeholder="搜寻标题、描述或标签…"
 				autocomplete="off"
 			/>
 			<svg
@@ -66,8 +73,8 @@ const buildStamp = '2026-08-14T00:00:00';
 				stroke-width="2.5"
 				stroke-linecap="round"
 				stroke-linejoin="round"
-				width="20"
-				height="20"
+				width="18"
+				height="18"
 			>
 				<circle cx="11" cy="11" r="8"></circle>
 				<line x1="21" y1="21" x2="16.65" y2="16.65"></line>
@@ -76,245 +83,529 @@ const buildStamp = '2026-08-14T00:00:00';
 		<div class="search-results" id="searchResults"></div>
 	</div>
 
-	<!-- 页眉 -->
-	<div class="glass paper-head">
-		<h1 class="paper-title">我的博客</h1>
-		<p class="paper-meta">
-			在代码、学术与日常之间穿梭 · 最近更新于{' '}
-			{posts[0] ? formatter.format(posts[0].data.pubDate) : '—'}
-		</p>
+	<!-- 刊头（档案 masthead） -->
+	<header class="masthead">
+		<div class="mast-name">
+			纸上拾光<span class="mast-sub">/ 档案目录 NO.001</span>
+		</div>
+		<div class="mast-actions">
+			<button class="icon-btn" id="searchBtn" title="搜索">搜</button>
+			<button class="icon-btn" id="themeBtn" title="切换主题"><span id="themeIcon">☾</span></button>
+		</div>
+	</header>
+
+	<!-- 卷宗抬头条 -->
+	<div class="issue">
+		<span class="issue-no">VOL.001 · 建档</span>
+		<span class="issue-date">建档于 {buildDate}</span>
+		<span class="issue-file">FILE {String(posts.length).padStart(3, '0')} 篇收录</span>
 	</div>
 
-	<!-- 文章目录 -->
-	<div class="glass paper-list mt-24">
-		<div class="paper-list-head">
-			<h2>最新文章</h2>
-			<a class="paper-more" href="/blog">全部文章 →</a>
-		</div>
-		{posts.map((p, i) => (
-			<a class="list-item" href={`/blog/${p.id}`}>
-				<span class="no">{String(i + 1).padStart(2, '0')}</span>
-				<span class="tt">{p.data.title}</span>
-				<span class="dt">{formatter.format(p.data.pubDate)}</span>
-			</a>
-		))}
+	<!-- 主布局：左文右栏 -->
+	<div class="layout">
+		<main class="main">
+			{lead ? (
+				<article class="lead">
+					<div class="lead-kicker">LEAD · 本期头条</div>
+					<h2 class="lead-title"><span class="hl">{lead.data.title}</span></h2>
+					<p class="lead-lede">{lead.data.description}</p>
+					<span class="lead-meta">
+						{formatter.format(lead.data.pubDate)}
+						{lead.data.tags?.length ? ` · ${lead.data.tags.join(' / ')}` : ''}
+					</span>
+					<a class="lead-link" href={`/blog/${lead.id}`}>展开卷宗 →</a>
+				</article>
+			) : (
+				<article class="lead">
+					<h2 class="lead-title">卷宗尚空</h2>
+					<p class="lead-lede">还没有收录任何文章。</p>
+				</article>
+			)}
+
+			<!-- 文章列表（极简：标题+日期） -->
+			<section class="posts">
+				<h3 class="sec-title">— 新收文章 —</h3>
+				{posts.slice(1).map((p, i) => (
+					<a class="post" href={`/blog/${p.id}`}>
+						<span class="post-no">{String(i + 2).padStart(2, '0')}</span>
+						<span class="post-tt">{p.data.title}</span>
+						<span class="post-dt">{formatter.format(p.data.pubDate)}</span>
+					</a>
+				))}
+				{posts.length <= 1 && <p class="empty-tip">暂无更多文章</p>}
+			</section>
+
+			<!-- 编辑手记（最新说说单条引言） -->
+			{latestChatter && (
+				<section class="note">
+					<span class="stamp">存档</span>
+					<div class="note-body">
+						<blockquote>{latestChatter.title}</blockquote>
+						<cite>
+							{latestChatter.date} · <a href="/moments">更多手记 →</a>
+						</cite>
+					</div>
+				</section>
+			)}
+		</main>
+
+		<aside class="side">
+			<section class="side-sec">
+				<h4 class="side-title">正在播放</h4>
+				<div class="now-playing">
+					<div class="eq" id="nowEq">♪</div>
+					<div class="np-info">
+						<div class="np-title" id="nowTitle">未连接云端</div>
+						<div class="np-artist" id="nowArtist">—</div>
+					</div>
+				</div>
+			</section>
+
+			<section class="side-sec">
+				<h4 class="side-title">按月归档</h4>
+				<ul class="archive">
+					{archives.map((a) => (
+						<li>
+							<a href="/timeline">
+								<span>{a.key}</span>
+								<span class="cnt">{a.count}</span>
+							</a>
+						</li>
+					))}
+				</ul>
+			</section>
+
+			<section class="side-sec">
+				<h4 class="side-title">关于</h4>
+				<p class="about-text">在代码、学术与日常之间穿梭的记录。站名暂定「纸上拾光」。</p>
+				<a class="about-link" href="/about">关于本站 →</a>
+			</section>
+		</aside>
 	</div>
 
-	<!-- 歌词栏 -->
-	<div class="lyricbar mt-24">
-		<div class="waves" id="waves">
-			<div class="wave w1"></div>
-			<div class="wave w2"></div>
-			<div class="wave w3"></div>
-			<div class="wave w4"></div>
-			<div class="wave w5"></div>
+	<!-- 底部迷你播放条 -->
+	<div class="player" id="player">
+		<div class="disc" id="disc">
+			<img id="discImg" src="" alt="cover" />
+			<div class="hole"></div>
 		</div>
-		<div class="lyric-text"><p id="lyricLine"></p></div>
-		<div class="music-note">
-			<svg
-				fill="none"
-				viewBox="0 0 24 24"
-				stroke="currentColor"
-				stroke-width="2"
-				stroke-linecap="round"
-				stroke-linejoin="round"
-			><path d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3"/></svg>
+		<div class="player-info">
+			<h3 class="player-title" id="playerTitle">未播放</h3>
+			<span class="player-artist" id="playerArtist">—</span>
+			<span class="player-lyric" id="playerLyric">云端未连接</span>
 		</div>
-	</div>
-
-	<!-- 两列：说说 + 组合面板 -->
-	<div class="row row-2 mt-24">
-		<div class="carousel chatter glass" id="chatterCarousel">
-			<div class="carousel-bg" id="chatterBg"></div>
-			<div class="carousel-content chatter-content">
-				<div><span class="chatter-tag" id="chatterTag"></span></div>
-				<h3 id="chatterTitle"></h3>
-				<p id="chatterDesc"></p>
-			</div>
-			<div class="dots" id="chatterDots"></div>
+		<div class="progress-row">
+			<span class="t" id="curTime">00:00</span>
+			<input type="range" class="seek" id="seekBar" min="0" max="100" value="0" />
+			<span class="t2" id="durTime">00:00</span>
 		</div>
-
-		<div class="col-stack">
-			<a class="poster" href="/photowall">
-				<img src="https://bu.dusays.com/2026/03/24/69c24230de927.jpg" alt="画廊" loading="lazy" />
-				<div class="overlay"></div>
-				<div class="info">
-					<h3>照片画廊</h3>
-					<p>光影与瞬间的视觉记录</p>
-				</div>
-			</a>
-			<div class="glass player" id="player">
-				<div class="player-glow" id="playerGlow"></div>
-				<div class="player-head">
-					<div class="disc" id="disc">
-						<img id="discImg" src="" alt="cover" />
-						<div class="hole"></div>
-					</div>
-					<div class="player-info">
-						<span class="player-badge">Cloud Music</span>
-						<h3 class="player-title" id="playerTitle"></h3>
-						<p class="player-artist" id="playerArtist"></p>
-					</div>
-				</div>
-				<div class="player-lyric" id="playerLyric"></div>
-				<div>
-					<div class="progress-row">
-						<span class="t" id="curTime">00:00</span>
-						<input type="range" class="seek" id="seekBar" min="0" max="100" value="0" />
-						<span class="t2" id="durTime">00:00</span>
-					</div>
-					<div class="player-controls">
-						<button class="ctrl-btn" id="prevBtn" title="上一首"><svg fill="currentColor" viewBox="0 0 24 24"><path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/></svg></button>
-						<button class="play-btn" id="playBtn" title="播放/暂停"><svg id="playIcon" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></button>
-						<button class="ctrl-btn" id="nextBtn" title="下一首"><svg fill="currentColor" viewBox="0 0 24 24"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/></svg></button>
-					</div>
-				</div>
-			</div>
-		</div>
-	</div>
-
-	<!-- 底部：主题 + 仪表盘 -->
-	<div class="row row-3 mt-24">
-		<div class="theme-block glass" id="themeBlock">
-			<div class="theme-orb">
-				<div class="day"></div>
-				<div class="night"></div>
-				<div class="ico ico-sun">🌸</div>
-				<div class="ico ico-moon">✨</div>
-			</div>
-			<h3 id="themeLabel">夜间模式</h3>
-			<p id="themeDesc">流萤飞舞的深空</p>
-		</div>
-
-		<div class="dashboard glass">
-			<div class="clock-box">
-				<span id="clock">00:00:00</span>
-				<div class="shine"></div>
-				<div class="line"></div>
-			</div>
-			<div class="dash-info">
-				<div class="dash-uptime">
-					<span class="live-dot"></span>
-					<span>系统已稳定运行：<b id="uptime"></b></span>
-				</div>
-				<div class="badges">
-					<span class="badge"><svg fill="currentColor" viewBox="0 0 24 24" style="color:#ff5d01"><path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"/></svg>Astro 7</span>
-					<span class="badge"><svg fill="currentColor" viewBox="0 0 24 24" style="color:#3178c6"><path d="M23 0H1a1 1 0 00-1 1v22a1 1 0 001 1h22a1 1 0 001-1V1a1 1 0 00-1-1zM12 20.5l-1.5-.5c-2.5-.5-3.5-2-3.5-4.5h2.5c0 1.5.5 2.5 1.5 2.5.5 0 1-.5 1-2v-8.5l1.5-.5c1-.5 1.5-.5 1.5-.5s0 1 0 1.5v8c0 3-2.5 4.5-3 4.5zm9.5-4c-.5 1.5-2 2.5-4 2.5-2 0-3.5-1-3.5-2.5 0-1 1-2 2.5-2.5l1.5-.5v-1.5c-1 .5-2 .5-2.5.5 0-1.5-.5-2.5-.5-3 1.5 0 3 .5 3.5 1l1.5.5V2.5c0-1.5.5-2 1.5-2.5 1-.5 2-1 2.5-1v20l-1.5 1z"/></svg>TypeScript 5</span>
-					<span class="badge"><svg fill="currentColor" viewBox="0 0 24 24" style="color:#0ea5e9"><path d="M14 3l1.7 3.2L19 6.8l-2.4 2.4.6 3.3-3.2-1.7-3.2 1.7.6-3.3L9 6.8l3.3-.6L14 3zM5 8l1.2 2.3L8.5 11.5l-2.3 1.2L5 15l-1.2-2.3L1.5 11.5l2.3-1.2L5 8zm14 8l-.9 1.8-1.8.9 1.8.9.9 1.8.9-1.8 1.8-.9-1.8-.9-.9-1.8z"/></svg>Markdown</span>
-				</div>
-				<a class="icp" href="/about">关于本站</a>
-			</div>
+		<div class="player-controls">
+			<button class="ctrl-btn" id="prevBtn" title="上一首">
+				<svg fill="currentColor" viewBox="0 0 24 24"><path d="M6 6h2v12H6zm3.5 6l8.5 6V6z" /></svg>
+			</button>
+			<button class="play-btn" id="playBtn" title="播放/暂停">
+				<svg id="playIcon" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" /></svg>
+			</button>
+			<button class="ctrl-btn" id="nextBtn" title="下一首">
+				<svg fill="currentColor" viewBox="0 0 24 24"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z" /></svg>
+			</button>
 		</div>
 	</div>
 
 	<style>
-		.mt-24 {
-			margin-top: 24px;
-		}
-		.col-stack {
+		/* ===== 档案 masthead ===== */
+		.masthead {
 			display: flex;
-			flex-direction: column;
-			gap: 24px;
-		}
-
-		/* ===== 纸墨 · 页眉 ===== */
-		.paper-head {
-			padding: 30px 32px;
-		}
-		.paper-title {
-			font-size: 34px;
-			font-weight: 900;
-			letter-spacing: 0.06em;
-		}
-		.paper-meta {
-			margin-top: 8px;
-			font-size: 14px;
-			color: var(--text-mute);
-		}
-
-		/* ===== 纸墨 · 文章目录 ===== */
-		.paper-list {
-			padding: 8px 28px 18px;
-		}
-		.paper-list-head {
-			display: flex;
-			align-items: baseline;
+			align-items: center;
 			justify-content: space-between;
-			padding: 16px 0 6px;
-			border-bottom: 1px solid rgba(28, 25, 23, 0.08);
+			padding: 36px 0 18px;
+			border-bottom: 2px solid var(--text-main);
 		}
-		.paper-list-head h2 {
-			font-size: 18px;
+		.mast-name {
+			font-family: var(--serif);
+			font-size: 30px;
 			font-weight: 900;
-			letter-spacing: 0.1em;
+			letter-spacing: 0.08em;
 		}
-		.paper-more {
-			font-size: 13px;
-			color: var(--indigo);
-			text-decoration: none;
-			font-weight: 700;
+		.mast-sub {
+			font-family: var(--mono);
+			font-size: 12px;
+			color: var(--text-mute);
+			letter-spacing: 0.05em;
+			margin-left: 10px;
 		}
-		.paper-more:hover {
-			text-decoration: underline;
+		.mast-actions {
+			display: flex;
+			gap: 10px;
 		}
-		.list-item {
-			display: grid;
-			grid-template-columns: 56px 1fr auto;
-			gap: 16px;
-			align-items: baseline;
-			padding: 15px 6px;
-			border-bottom: 1px solid rgba(28, 25, 23, 0.07);
-			text-decoration: none;
+		.icon-btn {
+			width: 34px;
+			height: 34px;
+			background: none;
+			border: 1.5px solid var(--text-mute);
 			color: var(--text-main);
-			border-radius: 8px;
-			transition:
-				background 0.25s,
-				padding-left 0.25s;
-		}
-		.list-item:last-child {
-			border-bottom: none;
-		}
-		.list-item:hover {
-			background: rgba(255, 255, 255, 0.45);
-			padding-left: 12px;
-		}
-		.list-item .no {
-			font-family: Consolas, Menlo, monospace;
+			font-family: var(--mono);
 			font-size: 13px;
-			color: var(--indigo);
+			cursor: pointer;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			transition: border-color 0.25s, color 0.25s;
 		}
-		.list-item .tt {
+		.icon-btn:hover {
+			border-color: var(--seal);
+			color: var(--seal);
+		}
+
+		/* ===== 卷宗抬头条 ===== */
+		.issue {
+			display: flex;
+			justify-content: space-between;
+			font-family: var(--mono);
+			font-size: 11px;
+			letter-spacing: 0.12em;
+			color: var(--text-sub);
+			padding: 8px 0;
+			border-bottom: 1px solid var(--card-border);
+		}
+		.issue .issue-no {
+			color: var(--seal);
+		}
+
+		/* ===== 布局 ===== */
+		.layout {
+			display: grid;
+			grid-template-columns: 1fr 292px;
+			gap: 48px;
+			padding: 34px 0 80px;
+		}
+		@media (max-width: 860px) {
+			.layout {
+				grid-template-columns: 1fr;
+				gap: 40px;
+			}
+			.side {
+				position: static;
+			}
+		}
+
+		/* ===== 头条 ===== */
+		.lead {
+			padding: 10px 0 28px;
+			border-bottom: 1px solid var(--card-border);
+		}
+		.lead-kicker {
+			font-family: var(--mono);
+			font-size: 12px;
+			letter-spacing: 0.2em;
+			color: var(--seal);
+		}
+		.lead-title {
+			font-family: var(--serif);
+			font-size: clamp(26px, 3.6vw, 38px);
 			font-weight: 900;
-			font-size: 17px;
+			line-height: 1.35;
+			margin: 14px 0 10px;
 			letter-spacing: 0.02em;
 		}
-		.list-item .dt {
+		.hl {
+			background: linear-gradient(transparent 62%, var(--hi) 62%, var(--hi) 96%, transparent 96%);
+			padding: 0 2px;
+		}
+		.lead-lede {
+			color: var(--text-sub);
+			font-size: 15px;
+			max-width: 60ch;
+			margin-bottom: 8px;
+		}
+		.lead-meta {
+			font-family: var(--mono);
+			font-size: 12px;
 			color: var(--text-mute);
+		}
+		.lead-link {
+			display: inline-block;
+			margin-top: 14px;
 			font-size: 13px;
-			font-family: Consolas, Menlo, monospace;
+			font-weight: 700;
+			color: var(--blue);
+			text-decoration: none;
+			border-bottom: 1px solid var(--blue);
+			padding-bottom: 1px;
+		}
+		.lead-link:hover {
+			color: var(--seal);
+			border-color: var(--seal);
 		}
 
-		/* 底部行布局 */
-		.row-3 {
-			display: grid;
-			grid-template-columns: 320px 1fr;
-			gap: 24px;
+		/* ===== 文章列表（档案行） ===== */
+		.sec-title {
+			font-family: var(--mono);
+			font-size: 12px;
+			letter-spacing: 0.24em;
+			color: var(--text-sub);
+			margin: 28px 0 4px;
 		}
-		@media (max-width: 760px) {
-			.row-3 {
-				grid-template-columns: 1fr;
+		.post {
+			display: grid;
+			grid-template-columns: 46px 1fr auto;
+			gap: 14px;
+			align-items: baseline;
+			padding: 15px 10px 15px 16px;
+			border-bottom: 1px solid var(--card-border);
+			text-decoration: none;
+			color: var(--text-main);
+			border-left: 3px solid transparent;
+			transition:
+				transform 0.25s,
+				border-color 0.25s,
+				background 0.25s,
+				box-shadow 0.25s;
+		}
+		.post:hover {
+			transform: translateX(4px);
+			border-left-color: var(--seal);
+			background: rgba(35, 35, 43, 0.035);
+			box-shadow: 3px 3px 0 rgba(35, 35, 43, 0.07);
+		}
+		[data-theme='dark'] .post:hover {
+			background: rgba(230, 228, 221, 0.04);
+			box-shadow: 3px 3px 0 rgba(230, 228, 221, 0.08);
+		}
+		.post-no {
+			font-family: var(--mono);
+			font-size: 12px;
+			color: var(--blue);
+		}
+		.post-tt {
+			font-weight: 800;
+			font-size: 16px;
+			letter-spacing: 0.02em;
+		}
+		.post-dt {
+			font-family: var(--mono);
+			font-size: 12px;
+			color: var(--text-mute);
+		}
+		@media (max-width: 620px) {
+			.post {
+				grid-template-columns: 36px 1fr;
 			}
-			.list-item {
-				grid-template-columns: 40px 1fr;
-			}
-			.list-item .dt {
+			.post-dt {
 				display: none;
 			}
 		}
+		.empty-tip {
+			font-size: 13px;
+			color: var(--text-mute);
+		}
+
+		/* ===== 编辑手记（说说单条 + 存档章） ===== */
+		.note {
+			display: flex;
+			gap: 18px;
+			margin-top: 30px;
+			padding: 18px 20px;
+			background: var(--card-bg);
+			border: 1px solid var(--card-border);
+		}
+		.stamp {
+			flex: none;
+			font-family: var(--mono);
+			font-size: 11px;
+			letter-spacing: 0.2em;
+			color: var(--seal);
+			border: 1.5px solid var(--seal);
+			border-radius: 3px;
+			padding: 3px 7px;
+			transform: rotate(-8deg);
+			height: fit-content;
+			margin-top: 4px;
+		}
+		.note-body blockquote {
+			margin: 0;
+			font-family: var(--serif);
+			font-size: 17px;
+			line-height: 1.7;
+		}
+		.note-body cite {
+			display: block;
+			margin-top: 6px;
+			font-style: normal;
+			font-family: var(--mono);
+			font-size: 11px;
+			color: var(--text-mute);
+		}
+		.note-body cite a {
+			color: var(--blue);
+			text-decoration: none;
+		}
+		.note-body cite a:hover {
+			color: var(--seal);
+		}
+
+		/* ===== 侧栏 ===== */
+		.side {
+			display: flex;
+			flex-direction: column;
+			gap: 30px;
+			position: sticky;
+			top: 84px;
+			align-self: start;
+		}
+		.side-title {
+			font-family: var(--mono);
+			font-size: 12px;
+			letter-spacing: 0.24em;
+			color: var(--seal);
+			margin: 0 0 10px;
+			padding-bottom: 6px;
+			border-bottom: 1px solid var(--card-border);
+		}
+		.now-playing {
+			display: flex;
+			align-items: center;
+			gap: 12px;
+		}
+		.eq {
+			font-size: 16px;
+			color: var(--seal);
+			animation: eqPulse 1.2s ease-in-out infinite;
+		}
+		.np-title {
+			font-size: 14px;
+			font-weight: 800;
+		}
+		.np-artist {
+			font-size: 12px;
+			color: var(--text-sub);
+		}
+		@keyframes eqPulse {
+			0%,
+			100% {
+				opacity: 0.45;
+			}
+			50% {
+				opacity: 1;
+			}
+		}
+		.archive {
+			list-style: none;
+			margin: 0;
+			padding: 0;
+		}
+		.archive a {
+			display: flex;
+			justify-content: space-between;
+			padding: 7px 2px;
+			border-bottom: 1px dashed var(--card-border);
+			font-size: 13px;
+			color: var(--text-main);
+			text-decoration: none;
+			transition: color 0.2s, padding-left 0.2s;
+		}
+		.archive a:hover {
+			color: var(--seal);
+			padding-left: 6px;
+		}
+		.archive .cnt {
+			font-family: var(--mono);
+			font-size: 11px;
+			background: var(--hi);
+			color: #23232b;
+			padding: 0 6px;
+			line-height: 1.7;
+			border-radius: 2px;
+		}
+		.about-text {
+			font-size: 13px;
+			color: var(--text-sub);
+			line-height: 1.8;
+			margin: 0 0 8px;
+		}
+		.about-link {
+			font-size: 12px;
+			font-weight: 700;
+			color: var(--blue);
+			text-decoration: none;
+		}
+		.about-link:hover {
+			color: var(--seal);
+		}
+
+		/* ===== 搜索弹层 ===== */
+		.search-overlay {
+			position: fixed;
+			top: 74px;
+			left: 50%;
+			transform: translateX(-50%);
+			width: min(560px, 92vw);
+			z-index: 70;
+		}
+		.search-box {
+			display: flex;
+			align-items: center;
+			gap: 10px;
+			padding: 12px 16px;
+			background: var(--card-bg);
+			border: 2px solid var(--text-main);
+			box-shadow: 4px 4px 0 rgba(35, 35, 43, 0.15);
+		}
+		.search-input {
+			flex: 1;
+			background: none;
+			border: none;
+			outline: none;
+			font-size: 15px;
+			color: var(--text-main);
+			font-family: var(--sans);
+		}
+		.search-icon {
+			color: var(--text-mute);
+			flex: none;
+		}
+		.search-results {
+			margin-top: 8px;
+			background: var(--card-bg);
+			border: 1px solid var(--card-border);
+			box-shadow: 4px 4px 0 rgba(35, 35, 43, 0.1);
+		}
+		.search-results .search-item {
+			display: block;
+			padding: 12px 16px;
+			text-decoration: none;
+			color: var(--text-main);
+			border-bottom: 1px dashed var(--card-border);
+		}
+		.search-results .search-item:last-child {
+			border-bottom: none;
+		}
+		.search-results .search-item:hover {
+			background: rgba(35, 35, 43, 0.05);
+		}
+		.search-results .search-item h4 {
+			margin: 0;
+			font-size: 14px;
+		}
+		.search-results .search-item p {
+			margin: 2px 0 0;
+			font-size: 12px;
+			color: var(--text-sub);
+		}
+		.search-results .search-empty {
+			padding: 14px 16px;
+			font-size: 13px;
+			color: var(--text-mute);
+		}
+		.search-results mark {
+			background: var(--hi);
+			color: #23232b;
+			padding: 0 2px;
+		}
 	</style>
 
-	<script define:vars={{ searchData, chatters, buildStamp, musicIds }}>
-		/* ============ Toast / 复制 ============ */
+	<script define:vars={{ searchData, buildStamp, musicIds }}>
+		/* ============ Toast ============ */
 		var toastTimer;
 		function showToast(msg) {
 			var t = document.getElementById('toast');
@@ -325,21 +616,9 @@ const buildStamp = '2026-08-14T00:00:00';
 				t.classList.remove('show');
 			}, 2200);
 		}
-		function copy(text, label) {
-			if (navigator.clipboard) navigator.clipboard.writeText(text);
-			showToast('✨ ' + label + '已复制到剪贴板: ' + text);
-		}
-
-		/* ============ 个人名片 / 社交 ============ */
-		/* ============ 社交 ============ */
-		document.querySelectorAll('.social-btn').forEach(function (btn) {
-			btn.addEventListener('click', function (e) {
-				e.stopPropagation();
-				copy(btn.getAttribute('data-copy'), btn.getAttribute('data-label'));
-			});
-		});
 
 		/* ============ 搜索 ============ */
+		var searchOpen = false;
 		function escapeHtml(s) {
 			return String(s).replace(/[&<>"']/g, function (c) {
 				return {
@@ -385,7 +664,7 @@ const buildStamp = '2026-08-14T00:00:00';
 				var res = await window.Pagefind.search(q);
 				var items = (res.results || []).slice(0, 8);
 				if (!items.length) {
-					box.innerHTML = '<div class="search-empty">数据海中未发现关于 <b>' + escapeHtml(q) + '</b> 的踪迹</div>';
+					box.innerHTML = '<div class="search-empty">卷宗中未发现关于 <b>' + escapeHtml(q) + '</b> 的记录</div>';
 					box.classList.add('show');
 					return;
 				}
@@ -411,17 +690,36 @@ const buildStamp = '2026-08-14T00:00:00';
 				box.classList.add('show');
 			}
 		}
+		function toggleSearch(force) {
+			var ov = document.getElementById('searchOverlay');
+			searchOpen = typeof force === 'boolean' ? force : !searchOpen;
+			ov.hidden = !searchOpen;
+			if (searchOpen) {
+				var inp = document.getElementById('searchInput');
+				inp.focus();
+				doSearch(inp.value);
+			} else {
+				document.getElementById('searchResults').classList.remove('show');
+			}
+		}
+		document.getElementById('searchBtn').addEventListener('click', function (e) {
+			e.stopPropagation();
+			toggleSearch();
+		});
+		document.getElementById('searchOverlay').addEventListener('mousedown', function (e) {
+			e.stopPropagation();
+		});
+		document.addEventListener('mousedown', function () {
+			if (searchOpen) toggleSearch(false);
+		});
+		document.addEventListener('keydown', function (e) {
+			if (e.key === 'Escape' && searchOpen) toggleSearch(false);
+		});
 		document.getElementById('searchInput').addEventListener('input', function (e) {
 			doSearch(e.target.value);
 		});
 		document.getElementById('searchInput').addEventListener('focus', function (e) {
 			doSearch(e.target.value);
-		});
-		document.addEventListener('mousedown', function (e) {
-			var w = document.getElementById('searchWrap');
-			if (!w.contains(e.target)) {
-				document.getElementById('searchResults').classList.remove('show');
-			}
 		});
 
 		/* ============ 播放器（真实播放，数据来自 CMS /api/music） ============ */
@@ -451,10 +749,7 @@ const buildStamp = '2026-08-14T00:00:00';
 			document.getElementById('playIcon').innerHTML = on
 				? '<path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>'
 				: '<path d="M8 5v14l11-7z"/>';
-			document.querySelectorAll('.wave').forEach(function (w) {
-				w.classList.toggle('on', on);
-			});
-			document.getElementById('playerGlow').style.opacity = on ? '1' : '0.3';
+			document.getElementById('nowEq').textContent = on ? '♫' : '♪';
 		}
 		function loadSong() {
 			if (!playlist.length) return;
@@ -462,14 +757,13 @@ const buildStamp = '2026-08-14T00:00:00';
 			document.getElementById('discImg').src = s.cover;
 			document.getElementById('playerTitle').textContent = s.title;
 			document.getElementById('playerArtist').textContent = s.artist;
+			document.getElementById('nowTitle').textContent = s.title;
+			document.getElementById('nowArtist').textContent = s.artist;
 			document.getElementById('durTime').textContent = '00:00';
 			document.getElementById('curTime').textContent = '00:00';
 			document.getElementById('seekBar').value = 0;
 			document.getElementById('seekBar').style.setProperty('--p', '0%');
 			document.getElementById('playerLyric').textContent = '♪ 正在缓冲 ♪';
-			var lyricLine = document.getElementById('lyricLine');
-			lyricLine.textContent = s.lyrics && s.lyrics.length ? s.lyrics[0].text : '♪ 纯享音乐 ♪';
-			lyricLine.style.opacity = 1;
 			audio.src = s.url;
 			audio.load();
 			if (playing) audio.play().catch(function () { setPlayUi(false); });
@@ -518,21 +812,6 @@ const buildStamp = '2026-08-14T00:00:00';
 			document.getElementById('seekBar').value = per;
 			document.getElementById('seekBar').style.setProperty('--p', per + '%');
 			document.getElementById('curTime').textContent = fmt(audio.currentTime);
-			var s = playlist[cur];
-			if (!s || !s.lyrics || !s.lyrics.length) return;
-			var li = 0;
-			for (var i = 0; i < s.lyrics.length; i++) {
-				if (s.lyrics[i].time <= audio.currentTime + 0.2) li = i;
-				else break;
-			}
-			var line = document.getElementById('lyricLine');
-			if (line.textContent !== s.lyrics[li].text) {
-				line.textContent = s.lyrics[li].text;
-				line.style.opacity = 1;
-			} else if (li < s.lyrics.length - 1) {
-				var per2 = (audio.currentTime - s.lyrics[li].time) / (s.lyrics[li + 1].time - s.lyrics[li].time);
-				line.style.opacity = 0.55 + 0.45 * Math.min(1, Math.max(0, per2));
-			}
 		});
 		audio.addEventListener('ended', function () {
 			cur = (cur + 1) % playlist.length;
@@ -594,6 +873,7 @@ const buildStamp = '2026-08-14T00:00:00';
 						return;
 					}
 					musicFailed = false;
+					document.getElementById('playerLyric').textContent = '♪ 第 1 / ' + playlist.length + ' 首';
 					loadSong();
 					playing = true;
 					setPlayUi(true);
@@ -615,83 +895,23 @@ const buildStamp = '2026-08-14T00:00:00';
 		}
 		initMusic();
 
-		/* ============ 说说轮播 ============ */
-		var ci = 0,
-			ctimer;
-		function renderChatter() {
-			if (!chatters.length) {
-				document.getElementById('chatterTitle').textContent = '暂无说说';
-				document.getElementById('chatterDesc').textContent = '去发布你的第一条记录吧';
-				return;
-			}
-			var c = chatters[ci];
-			document.getElementById('chatterBg').innerHTML =
-				'<img src="' + c.cover + '" alt=""><div class="shade"></div>';
-			document.getElementById('chatterTitle').textContent = c.title;
-			document.getElementById('chatterDesc').textContent = c.desc;
-			document.getElementById('chatterTag').textContent = 'Records · ' + c.date;
-			var dots = document.getElementById('chatterDots');
-			dots.innerHTML = '';
-			chatters.forEach(function (_, i) {
-				var b = document.createElement('button');
-				b.className = 'dot ' + (i === ci ? 'active' : 'inactive');
-				b.addEventListener('click', function (e) {
-					e.stopPropagation();
-					ci = i;
-					renderChatter();
-					restartChatter();
-				});
-				dots.appendChild(b);
-			});
-		}
-		function restartChatter() {
-			clearInterval(ctimer);
-			if (chatters.length > 1)
-				ctimer = setInterval(function () {
-					ci = (ci + 1) % chatters.length;
-					renderChatter();
-				}, 6000);
-		}
-		renderChatter();
-		restartChatter();
-		document.getElementById('chatterCarousel').addEventListener('click', function () {
-			window.location.href = '/moments';
-		});
-
 		/* ============ 主题切换 ============ */
 		function toggleTheme() {
 			var html = document.documentElement;
 			var isDark = html.getAttribute('data-theme') === 'dark';
-			html.setAttribute('data-theme', isDark ? 'light' : 'dark');
-			document.getElementById('themeLabel').textContent = isDark ? '日间模式' : '夜间模式';
-			document.getElementById('themeDesc').textContent = isDark ? '落樱漫舞的清晨' : '流萤飞舞的深空';
+			if (isDark) html.removeAttribute('data-theme');
+			else html.setAttribute('data-theme', 'dark');
+			document.getElementById('themeIcon').textContent = isDark ? '☀' : '☾';
 			try {
 				localStorage.setItem('theme', isDark ? 'light' : 'dark');
 			} catch (e) {
 				/* noop */
 			}
 		}
-		document.getElementById('themeBlock').addEventListener('click', toggleTheme);
-		(function initThemeLabel() {
+		document.getElementById('themeBtn').addEventListener('click', toggleTheme);
+		(function initThemeIcon() {
 			var isDark = document.documentElement.getAttribute('data-theme') === 'dark';
-			document.getElementById('themeLabel').textContent = isDark ? '夜间模式' : '日间模式';
-			document.getElementById('themeDesc').textContent = isDark ? '流萤飞舞的深空' : '落樱漫舞的清晨';
+			document.getElementById('themeIcon').textContent = isDark ? '☾' : '☀';
 		})();
-
-		/* ============ 站点仪表盘 ============ */
-		var BUILD = new Date(buildStamp).getTime();
-		setInterval(function () {
-			var now = new Date();
-			document.getElementById('clock').textContent = now.toLocaleTimeString('en-US', {
-				hour12: false,
-				hour: '2-digit',
-				minute: '2-digit',
-				second: '2-digit',
-			});
-			var diff = now.getTime() - BUILD;
-			var days = Math.floor(diff / 86400000),
-				hours = Math.floor((diff % 86400000) / 3600000);
-			document.getElementById('uptime').textContent = days + '天 ' + hours + '小时';
-		}, 1000);
 	</script>
 </Layout>

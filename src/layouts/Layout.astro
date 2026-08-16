@@ -5,7 +5,7 @@ interface Props {
 	cover?: string;
 }
 
-const { title = '我的博客', description = '用 Astro 构建的个人博客', cover } = Astro.props;
+const { title = '纸上拾光', description = '用 Astro 构建的个人博客', cover } = Astro.props;
 const site = import.meta.env.SITE || 'http://localhost:4321';
 const coverUrl = cover
 	? cover.startsWith('http')
@@ -28,7 +28,7 @@ import '../styles/global.css';
 		<meta property="og:description" content={description} />
 		<meta property="og:type" content="website" />
 		<meta property="og:url" content={Astro.url.href} />
-		<meta property="og:site_name" content="我的博客" />
+		<meta property="og:site_name" content="纸上拾光" />
 		<meta name="twitter:card" content="summary" />
 		{coverUrl && <meta property="og:image" content={coverUrl} />}
 		<link rel="canonical" href={Astro.url.href} />
@@ -36,7 +36,7 @@ import '../styles/global.css';
 		<script type="application/ld+json" set:html={JSON.stringify({
 			'@context': 'https://schema.org',
 			'@type': 'WebSite',
-			name: '我的博客',
+			name: '纸上拾光',
 			url: site,
 			description,
 		})} />
@@ -55,7 +55,7 @@ import '../styles/global.css';
 	<body>
 		<Background />
 		<header id="navbar">
-			<a class="brand" href="/">我的博客</a>
+			<a class="brand" href="/"><span class="mark"></span>纸上拾光</a>
 			<nav class="nav-links">
 				<a href="/" class:list={{ active: Astro.url.pathname === '/' }}>首页</a>
 				<a
@@ -84,11 +84,22 @@ import '../styles/global.css';
 		<main class="container">
 			<slot />
 			<footer class="site-footer">
-				© {new Date().getFullYear()} 我的博客 · Powered by Astro
+				© {new Date().getFullYear()} 纸上拾光 · Powered by Astro · <span id="uptime"></span>
 			</footer>
 		</main>
 		<div id="toast"></div>
-		<script>
+		<script define:vars={{ buildStamp: new Date().toISOString() }}>
+			const BUILD = new Date(buildStamp).getTime();
+			function tickUptime() {
+				const el = document.getElementById('uptime');
+				if (!el) return;
+				const diff = Math.max(0, Date.now() - BUILD);
+				const d = Math.floor(diff / 86400000);
+				const h = Math.floor((diff % 86400000) / 3600000);
+				el.textContent = '运行 ' + d + ' 天 ' + h + ' 小时';
+			}
+			tickUptime();
+			setInterval(tickUptime, 60000);
 			const lastY = { v: 0 };
 			const nav = document.getElementById('navbar');
 			window.addEventListener(
