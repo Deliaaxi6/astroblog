@@ -1,0 +1,490 @@
+---
+/**
+ * 中枢链路 · 深空时间线组件
+ *
+ * 纯 Astro + TypeScript + TailwindCSS 实现，适配 Astro ContentCollections。
+ * SSR 静态渲染初始内容（无 JS 亦可阅读），客户端由原生 Web Component
+ * 监听 articles 属性变化自动刷新（外部传入筛选后的列表即自动重渲染）。
+ */
+
+export interface Article {
+	id: string;
+	title: string;
+	cover?: string;
+	summary?: string;
+	tags?: string[];
+	/** ISO 时间字符串 */
+	publishAt: string;
+}
+
+interface Props {
+	/** 外部传入的文章列表（可按关键词/标签筛选后传入，组件自动刷新） */
+	articleList: Article[];
+	/** 视图模式：本组件仅渲染 timeline 模式 */
+	viewMode?: 'timeline' | 'grid';
+	/** 是否启用 Canvas 粒子星空背景（默认开启） */
+	starfield?: boolean;
+}
+
+const { articleList, viewMode = 'timeline', starfield = true } = Astro.props;
+
+const sorted = [...articleList].sort(
+	(a, b) => new Date(b.publishAt).valueOf() - new Date(a.publishAt).valueOf()
+);
+
+const formatter = new Intl.DateTimeFormat('zh-CN', {
+	year: 'numeric',
+	month: '2-digit',
+	day: '2-digit',
+});
+const fmt = (iso: string): string => {
+	const d = new Date(iso);
+	return Number.isNaN(d.valueOf()) ? iso : formatter.format(d);
+};
+---
+
+{
+	viewMode === 'timeline' ? (
+		<central-link-timeline
+			class="clt-root"
+			data-starfield={starfield ? 'on' : 'off'}
+			articles={JSON.stringify(sorted)}
+		>
+			{starfield && <canvas class="clt-stars" aria-hidden="true"></canvas>}
+			<div class="clt-axis" aria-hidden="true"></div>
+			<div class="clt-list">
+				{
+					sorted.map((a, i) => (
+						<article class:list={['clt-item', i % 2 === 0 ? 'clt-left' : 'clt-right']}>
+							<span class="clt-dot" aria-hidden="true"></span>
+							<a href={`/blog/${a.id}`} class="clt-card">
+								{a.cover && (
+									<div class="clt-cover">
+										<img src={a.cover} alt={a.title} loading="lazy" />
+									</div>
+								)}
+								<div class="clt-body">
+									<time class="clt-time" datetime={a.publishAt}>{fmt(a.publishAt)}</time>
+									<h3 class="clt-title">{a.title}</h3>
+									{a.summary && <p class="clt-summary">{a.summary}</p>}
+									{a.tags?.length ? (
+										<div class="clt-tags">
+											{a.tags.map((t) => (
+												<span class="clt-tag">{t}</span>
+											))}
+										</div>
+									) : null}
+								</div>
+							</a>
+						</article>
+					))
+				}
+			</div>
+			<p class="clt-empty" hidden>没有匹配的档案</p>
+		</central-link-timeline>
+	) : (
+		<central-link-timeline class="clt-root" data-view="grid" hidden></central-link-timeline>
+	)
+}
+
+<style is:global>
+	.clt-root {
+		position: relative;
+		display: block;
+		overflow: hidden;
+		border-radius: 20px;
+		padding: 48px 0 16px;
+		background:
+			radial-gradient(900px 480px at 72% -12%, rgba(176, 46, 38, 0.07), transparent 60%),
+			radial-gradient(700px 420px at 8% 112%, rgba(49, 87, 122, 0.08), transparent 60%),
+			linear-gradient(180deg, #fbfaf6 0%, #f4f3ef 60%, #ecebe4 100%);
+		border: 1px solid var(--card-border);
+		box-shadow:
+			inset 0 1px 0 rgba(255, 255, 255, 0.6),
+			0 24px 48px -16px rgba(35, 35, 43, 0.25);
+	}
+	[data-theme='dark'] .clt-root {
+		background:
+			radial-gradient(900px 480px at 72% -12%, rgba(176, 46, 38, 0.1), transparent 60%),
+			radial-gradient(700px 420px at 8% 112%, rgba(49, 87, 122, 0.12), transparent 60%),
+			linear-gradient(180deg, #23242c 0%, #1c1d24 60%, #17181e 100%);
+		border-color: rgba(230, 228, 221, 0.14);
+		box-shadow:
+			inset 0 1px 0 rgba(255, 255, 255, 0.05),
+			0 24px 48px -16px rgba(0, 0, 0, 0.6);
+	}
+	.clt-stars {
+		position: absolute;
+		inset: 0;
+		width: 100%;
+		height: 100%;
+		z-index: 0;
+		pointer-events: none;
+	}
+	.clt-axis {
+		position: absolute;
+		left: 50%;
+		top: 0;
+		bottom: 0;
+		width: 2px;
+		transform: translateX(-50%);
+		z-index: 1;
+		background: linear-gradient(
+			180deg,
+			transparent 0%,
+			rgba(176, 46, 38, 0.4) 12%,
+			rgba(49, 87, 122, 0.4) 88%,
+			transparent 100%
+		);
+	}
+	[data-theme='dark'] .clt-axis {
+		background: linear-gradient(
+			180deg,
+			transparent 0%,
+			rgba(208, 90, 80, 0.45) 12%,
+			rgba(127, 163, 201, 0.4) 88%,
+			transparent 100%
+		);
+	}
+	.clt-list {
+		position: relative;
+		z-index: 2;
+	}
+	.clt-item {
+		position: relative;
+		width: 50%;
+		padding: 0 44px 44px 0;
+	}
+	.clt-item.clt-right {
+		margin-left: 50%;
+		padding: 0 0 44px 44px;
+	}
+	.clt-dot {
+		position: absolute;
+		top: 10px;
+		right: -7px;
+		width: 14px;
+		height: 14px;
+		border-radius: 9999px;
+		z-index: 3;
+		background: var(--seal);
+		box-shadow:
+			0 0 0 4px rgba(176, 46, 38, 0.14),
+			0 0 12px 2px rgba(176, 46, 38, 0.35),
+			0 0 26px 5px rgba(176, 46, 38, 0.15);
+		animation: clt-glow 3s ease-in-out infinite;
+	}
+	[data-theme='dark'] .clt-dot {
+		box-shadow:
+			0 0 0 4px rgba(208, 90, 80, 0.16),
+			0 0 14px 2px rgba(208, 90, 80, 0.4),
+			0 0 30px 6px rgba(208, 90, 80, 0.18);
+	}
+	.clt-right .clt-dot {
+		right: auto;
+		left: -7px;
+	}
+	@keyframes clt-glow {
+		0%,
+		100% {
+			box-shadow:
+				0 0 0 4px rgba(176, 46, 38, 0.14),
+				0 0 12px 2px rgba(176, 46, 38, 0.3);
+		}
+		50% {
+			box-shadow:
+				0 0 0 6px rgba(176, 46, 38, 0.2),
+				0 0 20px 6px rgba(176, 46, 38, 0.55);
+		}
+	}
+	[data-theme='dark'] .clt-dot {
+		animation: clt-glow-dark 3s ease-in-out infinite;
+	}
+	@keyframes clt-glow-dark {
+		0%,
+		100% {
+			box-shadow:
+				0 0 0 4px rgba(208, 90, 80, 0.16),
+				0 0 14px 2px rgba(208, 90, 80, 0.35);
+		}
+		50% {
+			box-shadow:
+				0 0 0 6px rgba(208, 90, 80, 0.22),
+				0 0 22px 6px rgba(208, 90, 80, 0.6);
+		}
+	}
+	.clt-card {
+		display: flex;
+		flex-direction: column;
+		gap: 12px;
+		padding: 18px;
+		border-radius: 16px;
+		text-decoration: none;
+		background: var(--card-bg);
+		border: 1px solid var(--card-border);
+		backdrop-filter: blur(12px);
+		-webkit-backdrop-filter: blur(12px);
+		transition:
+			transform 0.35s ease,
+			box-shadow 0.35s ease,
+			border-color 0.35s ease,
+			background 0.35s ease;
+	}
+	.clt-card:hover {
+		transform: translateY(-4px);
+		border-color: rgba(176, 46, 38, 0.4);
+		background: rgba(255, 255, 255, 0.65);
+		box-shadow: 0 18px 40px -14px rgba(176, 46, 38, 0.22);
+	}
+	[data-theme='dark'] .clt-card:hover {
+		border-color: rgba(208, 90, 80, 0.45);
+		background: rgba(51, 65, 85, 0.35);
+		box-shadow: 0 18px 40px -14px rgba(208, 90, 80, 0.35);
+	}
+	.clt-cover {
+		aspect-ratio: 16 / 9;
+		border-radius: 10px;
+		overflow: hidden;
+		background: rgba(49, 87, 122, 0.1);
+	}
+	.clt-cover img {
+		width: 100%;
+		height: 100%;
+		object-fit: cover;
+		display: block;
+		transition: transform 0.6s ease;
+	}
+	.clt-card:hover .clt-cover img {
+		transform: scale(1.06);
+	}
+	.clt-body {
+		display: flex;
+		flex-direction: column;
+		gap: 8px;
+	}
+	.clt-time {
+		font-size: 11px;
+		letter-spacing: 0.08em;
+		color: var(--blue);
+		font-family: ui-monospace, Consolas, Menlo, monospace;
+	}
+	.clt-title {
+		font-size: 17px;
+		font-weight: 700;
+		line-height: 1.45;
+		color: var(--text-main);
+		transition: color 0.3s ease;
+	}
+	.clt-card:hover .clt-title {
+		color: var(--indigo);
+	}
+	.clt-summary {
+		font-size: 13px;
+		line-height: 1.7;
+		color: var(--text-sub);
+		display: -webkit-box;
+		-webkit-line-clamp: 2;
+		-webkit-box-orient: vertical;
+		overflow: hidden;
+	}
+	.clt-tags {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 6px;
+	}
+	.clt-tag {
+		font-size: 11px;
+		font-weight: 600;
+		color: var(--indigo-light);
+		background: rgba(176, 46, 38, 0.1);
+		border: 1px solid rgba(176, 46, 38, 0.18);
+		padding: 3px 10px;
+		border-radius: 9999px;
+	}
+	.clt-empty {
+		position: relative;
+		z-index: 2;
+		text-align: center;
+		padding: 80px 24px;
+		color: var(--text-mute);
+		font-size: 14px;
+		letter-spacing: 0.06em;
+	}
+	@media (max-width: 768px) {
+		.clt-item,
+		.clt-item.clt-right {
+			width: 100%;
+			margin-left: 0;
+			padding: 0 calc(50% + 16px) 28px 12px;
+		}
+		.clt-dot,
+		.clt-right .clt-dot {
+			right: auto;
+			left: calc(50% - 7px);
+		}
+		.clt-root {
+			padding: 36px 0 12px;
+		}
+	}
+</style>
+
+<script>
+	const escapeHtml = (s: string): string =>
+		String(s ?? '').replace(/[&<>"']/g, (c) => {
+			const map: Record<string, string> = {
+				'&': '&amp;',
+				'<': '&lt;',
+				'>': '&gt;',
+				'"': '&quot;',
+				"'": '&#39;',
+			};
+			return map[c] ?? c;
+		});
+
+	const dateFmt = new Intl.DateTimeFormat('zh-CN', {
+		year: 'numeric',
+		month: '2-digit',
+		day: '2-digit',
+	});
+
+	const fmtDate = (iso: string): string => {
+		const d = new Date(iso);
+		return Number.isNaN(d.valueOf()) ? iso : dateFmt.format(d);
+	};
+
+	const itemHtml = (a: Article, i: number): string => `
+		<article class="clt-item ${i % 2 === 0 ? 'clt-left' : 'clt-right'}">
+			<span class="clt-dot" aria-hidden="true"></span>
+			<a href="${escapeHtml('/blog/' + a.id)}" class="clt-card">
+				${a.cover ? `<div class="clt-cover"><img src="${escapeHtml(a.cover)}" alt="${escapeHtml(a.title)}" loading="lazy" /></div>` : ''}
+				<div class="clt-body">
+					<time class="clt-time" datetime="${escapeHtml(a.publishAt)}">${escapeHtml(fmtDate(a.publishAt))}</time>
+					<h3 class="clt-title">${escapeHtml(a.title)}</h3>
+					${a.summary ? `<p class="clt-summary">${escapeHtml(a.summary)}</p>` : ''}
+					${a.tags?.length ? `<div class="clt-tags">${a.tags.map((t) => `<span class="clt-tag">${escapeHtml(t)}</span>`).join('')}</div>` : ''}
+				</div>
+			</a>
+		</article>`;
+
+	const readArticles = (el: HTMLElement): Article[] => {
+		const raw = el.getAttribute('articles');
+		if (!raw) return [];
+		try {
+			const parsed = JSON.parse(raw);
+			return Array.isArray(parsed) ? (parsed as Article[]) : [];
+		} catch {
+			return [];
+		}
+	};
+
+	const sortDesc = (list: Article[]): Article[] =>
+		[...list].sort((a, b) => new Date(b.publishAt).valueOf() - new Date(a.publishAt).valueOf());
+
+	const startStars = (canvas: HTMLCanvasElement): void => {
+		const ctx = canvas.getContext('2d');
+		if (!ctx) return;
+		const dpr = window.devicePixelRatio || 1;
+		let stars: { x: number; y: number; r: number; base: number; speed: number; phase: number }[] = [];
+		let raf = 0;
+
+		const isDark = (): boolean => {
+			const t = document.documentElement.getAttribute('data-theme') || 'dark';
+			return t !== 'light';
+		};
+
+		const resize = (): void => {
+			const w = canvas.clientWidth;
+			const h = canvas.clientHeight;
+			if (!w || !h) return;
+			canvas.width = w * dpr;
+			canvas.height = h * dpr;
+			const count = Math.min(140, Math.floor((w * h) / 5200));
+			stars = Array.from({ length: count }, () => ({
+				x: Math.random(),
+				y: Math.random(),
+				r: 0.4 + Math.random() * 1.2,
+				base: 0.18 + Math.random() * 0.45,
+				speed: 0.3 + Math.random() * 0.9,
+				phase: Math.random() * Math.PI * 2,
+			}));
+		};
+
+		const draw = (t: number): void => {
+			ctx.clearRect(0, 0, canvas.width, canvas.height);
+			const dark = isDark();
+			ctx.fillStyle = dark ? '#cfe8ff' : 'rgba(49, 87, 122, 0.9)';
+			for (const s of stars) {
+				const a = dark
+					? s.base + Math.sin((t / 1000) * s.speed + s.phase) * 0.22
+					: 0.1 + Math.sin((t / 1000) * s.speed + s.phase) * 0.06;
+				ctx.globalAlpha = Math.max(0.04, a);
+				ctx.beginPath();
+				ctx.arc(s.x * canvas.width, s.y * canvas.height, s.r * dpr, 0, Math.PI * 2);
+				ctx.fill();
+			}
+			raf = requestAnimationFrame(draw);
+		};
+
+		resize();
+		window.addEventListener('resize', resize);
+		if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+			raf = requestAnimationFrame(draw);
+		} else {
+			ctx.globalAlpha = 0.1;
+			ctx.fillStyle = isDark() ? '#cfe8ff' : 'rgba(49, 87, 122, 0.9)';
+			for (const s of stars) {
+				ctx.beginPath();
+				ctx.arc(s.x * canvas.width, s.y * canvas.height, s.r * dpr, 0, Math.PI * 2);
+				ctx.fill();
+			}
+		}
+		new MutationObserver(() => {
+			if (!raf) {
+				ctx.clearRect(0, 0, canvas.width, canvas.height);
+				ctx.globalAlpha = 0.1;
+				ctx.fillStyle = isDark() ? '#cfe8ff' : 'rgba(49, 87, 122, 0.9)';
+				for (const s of stars) {
+					ctx.beginPath();
+					ctx.arc(s.x * canvas.width, s.y * canvas.height, s.r * dpr, 0, Math.PI * 2);
+					ctx.fill();
+				}
+			}
+		}).observe(document.documentElement, {
+			attributes: true,
+			attributeFilter: ['data-theme'],
+		});
+		canvas.dataset.starReady = 'on';
+	};
+
+	class CentralLinkTimeline extends HTMLElement {
+		static get observedAttributes(): string[] {
+			return ['articles'];
+		}
+
+		connectedCallback(): void {
+			if (this.dataset.inited) return;
+			this.dataset.inited = 'on';
+			const canvas = this.querySelector<HTMLCanvasElement>('.clt-stars');
+			if (canvas && !canvas.dataset.starReady && this.getAttribute('data-starfield') !== 'off') {
+				startStars(canvas);
+			}
+		}
+
+		attributeChangedCallback(name: string, _old: string | null, value: string | null): void {
+			if (name !== 'articles') return;
+			const list = this.querySelector<HTMLElement>('.clt-list');
+			const empty = this.querySelector<HTMLElement>('.clt-empty');
+			if (!list || !empty) return;
+			const articles = sortDesc(readArticles(this));
+			empty.hidden = articles.length > 0;
+			list.hidden = articles.length === 0;
+			if (articles.length) {
+				list.innerHTML = articles.map(itemHtml).join('');
+			}
+		}
+	}
+
+	if (!customElements.get('central-link-timeline')) {
+		customElements.define('central-link-timeline', CentralLinkTimeline);
+	}
+</script>
