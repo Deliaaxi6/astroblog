@@ -4,7 +4,10 @@ import Layout from '../layouts/Layout.astro';
 
 <Layout title="关于">
 	<section class="glass about">
-		<h1>关于</h1>
+		<div class="about-head">
+			<h1>关于</h1>
+			<p class="about-sub">ABOUT THIS BLOG</p>
+		</div>
 		<p>
 			这是我的个人博客，基于 <a href="https://astro.build">Astro</a>{' '}
 			构建，内容以 Markdown 管理，部署在免费静态托管平台上。
@@ -13,3 +16,42 @@ import Layout from '../layouts/Layout.astro';
 		<p>支持日间 / 夜间主题切换，在首页右下角的主题卡片处即可切换。</p>
 	</section>
 </Layout>
+
+<style>
+	.about {
+		max-width: 720px;
+		margin: 0 auto;
+		padding: 40px 44px;
+	}
+	.about-head {
+		padding-bottom: 18px;
+		margin-bottom: 22px;
+		border-bottom: 1px solid rgba(28, 25, 23, 0.12);
+	}
+	.about-head h1 {
+		font-size: 30px;
+		font-weight: 900;
+		letter-spacing: 0.08em;
+	}
+	.about-sub {
+		margin-top: 6px;
+		font-size: 12px;
+		letter-spacing: 0.3em;
+		color: var(--indigo);
+		font-family: Consolas, Menlo, monospace;
+	}
+	.about p {
+		font-size: 16px;
+		line-height: 1.9;
+		color: var(--text-sub);
+		margin-bottom: 1em;
+	}
+	.about a {
+		color: var(--indigo);
+		text-decoration: none;
+		border-bottom: 1px dashed var(--indigo-light);
+	}
+	.about a:hover {
+		color: var(--purple);
+	}
+</style>
