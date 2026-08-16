@@ -1,0 +1,32 @@
+---
+title: 插图组件测试（MDX 组件式）
+description: 验证 ArticleFigure 组件 props 与灯箱
+pubDate: 2026-08-16T13:00:00.000Z
+tags:
+  - 测试
+---
+
+import ArticleFigure from '../../components/ArticleFigure.astro';
+import umlLocal from './uml-test-local.png';
+
+## import 相对图片（Astro 优化）
+
+<ArticleFigure
+  src={umlLocal}
+  alt="旅店预订UML状态图"
+  caption="图1 预订订单对象状态建模"
+/>
+
+## full 通栏 + 无灯箱
+
+<ArticleFigure
+  src="/images/uml-test-public.png"
+  alt="通栏插图"
+  caption="图2 通栏展示"
+  full
+  lightbox={false}
+/>
+
+## 无图注
+
+<ArticleFigure src={umlLocal} alt="无图注插图" />
