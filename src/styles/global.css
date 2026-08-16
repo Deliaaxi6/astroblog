@@ -24,10 +24,10 @@
 [data-theme='dark'] {
 	--indigo: #d05a50;
 	--indigo-light: #e07a70;
-	--indigo-dark: #8a211a;
+	--indigo-dark: #d05a50;
 	--purple: #7fa3c9;
 	--pink: #d05a50;
-	--hi: #8a7a1f;
+	--hi: #b3a02e;
 	--seal: #d05a50;
 	--blue: #7fa3c9;
 	--card-bg: rgba(28, 29, 36, 0.88);
@@ -564,6 +564,11 @@ body {
 	overflow: hidden;
 	position: relative;
 	animation: spin 6s linear infinite;
+	background: rgba(35, 35, 43, 0.08);
+}
+
+[data-theme='dark'] .disc {
+	background: rgba(230, 228, 221, 0.12);
 }
 
 .disc img {
