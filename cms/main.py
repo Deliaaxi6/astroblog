@@ -9,6 +9,7 @@ from api.posts import router as posts_router
 from api.moments import router as moments_router
 from api.site_data import router as site_data_router
 from api.music import router as music_router
+from api.drafts import router as drafts_router
 
 app = FastAPI(title="AstroBlog CMS Backend", version="0.1.0")
 
@@ -31,6 +32,7 @@ app.include_router(posts_router, prefix="/api/posts", tags=["Posts"])
 app.include_router(moments_router, prefix="/api/moments", tags=["Moments"])
 app.include_router(site_data_router, prefix="/api/site-data", tags=["SiteData"])
 app.include_router(music_router, prefix="/api/music", tags=["Music"])
+app.include_router(drafts_router, prefix="/api/drafts", tags=["Drafts"])
 
 STATIC_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "static")
 app.mount("/", StaticFiles(directory=STATIC_DIR, html=True), name="static")
