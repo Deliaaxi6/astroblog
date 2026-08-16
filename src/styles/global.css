@@ -222,7 +222,7 @@ body {
 
 .search-input:focus {
 	box-shadow:
-		0 0 0 2px rgba(194, 65, 12, 0.45),
+		0 0 0 2px rgba(176, 46, 38, 0.45),
 		0 20px 25px -5px rgba(0, 0, 0, 0.1);
 }
 
@@ -285,7 +285,7 @@ body {
 }
 
 .search-item:hover {
-	background: rgba(194, 65, 12, 0.08);
+	background: rgba(176, 46, 38, 0.08);
 }
 
 .search-item h4 {
@@ -768,7 +768,7 @@ input[type='range'].seek::-moz-range-thumb {
 
 .carousel-tag {
 	padding: 4px 12px;
-	background: rgba(194, 65, 12, 0.75);
+	background: rgba(176, 46, 38, 0.75);
 	backdrop-filter: blur(12px);
 	border-radius: 9999px;
 	font-size: 10px;
@@ -1258,7 +1258,7 @@ input[type='range'].seek::-moz-range-thumb {
 	padding: 3px 10px;
 	font-size: 11px;
 	font-weight: 700;
-	background: rgba(194, 65, 12, 0.12);
+	background: rgba(176, 46, 38, 0.12);
 	color: var(--indigo);
 	border-radius: 999px;
 }
@@ -1282,7 +1282,7 @@ input[type='range'].seek::-moz-range-thumb {
 .prose h2 {
 	font-size: 24px;
 	padding-bottom: 0.3em;
-	border-bottom: 1px solid rgba(28, 25, 23, 0.15);
+	border-bottom: 1px solid rgba(35, 35, 43, 0.15);
 }
 
 .prose h3 {
@@ -1309,13 +1309,13 @@ input[type='range'].seek::-moz-range-thumb {
 	margin: 1.2em 0;
 	padding: 0.5em 1.2em;
 	border-left: 4px solid var(--indigo);
-	background: rgba(194, 65, 12, 0.08);
+	background: rgba(176, 46, 38, 0.08);
 	border-radius: 0 12px 12px 0;
 	color: var(--text-sub);
 }
 
 .prose code {
-	background: rgba(194, 65, 12, 0.12);
+	background: rgba(176, 46, 38, 0.12);
 	padding: 0.15em 0.45em;
 	border-radius: 6px;
 	font-size: 0.88em;
