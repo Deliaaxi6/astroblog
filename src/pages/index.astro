@@ -31,26 +31,18 @@ const searchData = posts.map((p, i) => ({
 	cover: covers[i % covers.length],
 }));
 
-const chatters = [
-	{
-		title: '今晚的星空很亮',
-		desc: '调试了一整天 Astro 构建流程，抬头看看窗外的星星，突然觉得代码也没那么难了…',
-		cover: 'https://bu.dusays.com/2026/03/24/69c1e38b4c370.jpg',
-		date: '2026.08.10',
-	},
-	{
-		title: '博客终于跑起来了！',
-		desc: '从 Next.js 到 Astro，从复刻到移植，这个小小的站点终于有了自己的模样，嘿嘿。',
-		cover: 'https://bu.dusays.com/2026/03/31/69cb69bb530d8.jpg',
-		date: '2026.08.12',
-	},
-	{
-		title: '最近在读什么',
-		desc: '代码、学术与生活的碎片记录，慢慢整理成文，放在这里。',
-		cover: 'https://bu.dusays.com/2026/03/24/69c26fe4d9486.jpg',
-		date: '2026.08.13',
-	},
-];
+const chatters = (await getCollection('moments'))
+	.sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf())
+	.map((m) => {
+		const body = (m.body ?? '').trim().replace(/\r\n/g, '\n');
+		const firstLine = body.split('\n').find((l) => l.trim()) ?? '一条新的说说';
+		return {
+			title: firstLine.slice(0, 24),
+			desc: body.replace(/\s+/g, ' ').slice(0, 90),
+			cover: m.data.images?.[0] ?? covers[0],
+			date: formatter.format(m.data.date),
+		};
+	});
 
 const buildStamp = '2026-08-14T00:00:00';
 ---
@@ -610,6 +602,11 @@ const buildStamp = '2026-08-14T00:00:00';
 		var ci = 0,
 			ctimer;
 		function renderChatter() {
+			if (!chatters.length) {
+				document.getElementById('chatterTitle').textContent = '暂无说说';
+				document.getElementById('chatterDesc').textContent = '去发布你的第一条记录吧';
+				return;
+			}
 			var c = chatters[ci];
 			document.getElementById('chatterBg').innerHTML =
 				'<img src="' + c.cover + '" alt=""><div class="shade"></div>';
@@ -641,7 +638,7 @@ const buildStamp = '2026-08-14T00:00:00';
 		renderChatter();
 		restartChatter();
 		document.getElementById('chatterCarousel').addEventListener('click', function () {
-			showToast('✨ 说说为演示内容');
+			window.location.href = '/moments';
 		});
 		document.querySelector('.poster').addEventListener('click', function (e) {
 			e.preventDefault();
