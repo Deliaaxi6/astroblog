@@ -827,8 +827,9 @@ const lead = posts[0] ?? null;
 				window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 			function onScroll() {
 				var y = window.scrollY;
-				var h = bg.offsetHeight || 1;
-				var p = Math.min(1, y / (h * 0.8));
+				var maxY = (document.documentElement.scrollHeight || 0) - (window.innerHeight || 0);
+				var fadeEnd = Math.min(bg.offsetHeight * 0.8, Math.max(1, maxY));
+				var p = Math.min(1, y / fadeEnd);
 				bg.style.opacity = String(1 - p);
 			}
 			if (reduce) return;
