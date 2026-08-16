@@ -15,10 +15,13 @@ const formatter = new Intl.DateTimeFormat('zh-CN', {
 ---
 
 <Layout title="文章">
-	<h1 style="font-size: 32px; font-weight: 700; margin-bottom: 24px">全部文章</h1>
-	<ul class="post-list">
+	<section class="page-head">
+		<h1>全部文章</h1>
+		<p class="page-sub">共 {posts.length} 篇 · 按发布时间排列</p>
+	</section>
+	<div class="post-list">
 		{posts.map((post) => (
-			<a href={`/blog/${post.id}`} class="post-card">
+			<a href={`/blog/${post.id}`} class="post-card glass">
 				{post.data.cover && (
 					<img class="post-thumb" src={post.data.cover} alt={post.data.title} loading="lazy" />
 				)}
@@ -35,29 +38,81 @@ const formatter = new Intl.DateTimeFormat('zh-CN', {
 				</div>
 			</a>
 		))}
-	</ul>
+	</div>
 </Layout>
 
 <style>
+	.page-head {
+		margin: 8px 0 28px;
+	}
+	.page-head h1 {
+		font-size: 30px;
+		font-weight: 900;
+		letter-spacing: 0.08em;
+	}
+	.page-sub {
+		margin-top: 6px;
+		font-size: 13px;
+		color: var(--text-mute);
+	}
+	.post-list {
+		max-width: 780px;
+		margin: 0 auto;
+		display: flex;
+		flex-direction: column;
+		gap: 18px;
+	}
 	.post-card {
 		display: grid;
 		grid-template-columns: 1fr;
 		gap: 14px;
+		padding: 20px 22px;
+		text-decoration: none;
+		transition: transform 0.3s, box-shadow 0.3s;
+	}
+	.post-card:hover {
+		transform: translateY(-2px);
 	}
 	.post-thumb {
 		width: 100%;
-		height: 160px;
+		height: 150px;
 		object-fit: cover;
-		border-radius: 12px;
-		border: 1px solid var(--card-border);
+		border-radius: 10px;
+	}
+	.post-body h2 {
+		font-size: 18px;
+		font-weight: 900;
+		letter-spacing: 0.02em;
+		transition: color 0.25s;
+	}
+	.post-card:hover .post-body h2 {
+		color: var(--indigo);
+	}
+	.post-meta {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: 8px;
+		margin: 8px 0;
+		font-size: 12px;
+		color: var(--text-mute);
+	}
+	.post-body p {
+		font-size: 14px;
+		color: var(--text-sub);
+		line-height: 1.8;
+		display: -webkit-box;
+		-webkit-line-clamp: 2;
+		-webkit-box-orient: vertical;
+		overflow: hidden;
 	}
 	@media (min-width: 640px) {
 		.post-card {
-			grid-template-columns: 200px 1fr;
+			grid-template-columns: 150px 1fr;
 			align-items: start;
 		}
 		.post-thumb {
-			height: 112px;
+			height: 104px;
 		}
 	}
 </style>

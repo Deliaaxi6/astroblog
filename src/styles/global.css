@@ -263,7 +263,7 @@ body {
 }
 
 .search-item:hover {
-	background: rgba(99, 102, 241, 0.08);
+	background: rgba(194, 65, 12, 0.08);
 }
 
 .search-item h4 {
@@ -1394,7 +1394,7 @@ input[type='range'].seek::-webkit-slider-thumb:hover {
 	padding: 3px 10px;
 	font-size: 11px;
 	font-weight: 700;
-	background: rgba(99, 102, 241, 0.12);
+	background: rgba(194, 65, 12, 0.12);
 	color: var(--indigo);
 	border-radius: 999px;
 }
@@ -1418,7 +1418,7 @@ input[type='range'].seek::-webkit-slider-thumb:hover {
 .prose h2 {
 	font-size: 24px;
 	padding-bottom: 0.3em;
-	border-bottom: 1px solid rgba(100, 116, 139, 0.2);
+	border-bottom: 1px solid rgba(28, 25, 23, 0.15);
 }
 
 .prose h3 {
@@ -1445,13 +1445,13 @@ input[type='range'].seek::-webkit-slider-thumb:hover {
 	margin: 1.2em 0;
 	padding: 0.5em 1.2em;
 	border-left: 4px solid var(--indigo);
-	background: rgba(99, 102, 241, 0.08);
+	background: rgba(194, 65, 12, 0.08);
 	border-radius: 0 12px 12px 0;
 	color: var(--text-sub);
 }
 
 .prose code {
-	background: rgba(99, 102, 241, 0.12);
+	background: rgba(194, 65, 12, 0.12);
 	padding: 0.15em 0.45em;
 	border-radius: 6px;
 	font-size: 0.88em;
@@ -1460,7 +1460,7 @@ input[type='range'].seek::-webkit-slider-thumb:hover {
 }
 
 [data-theme='dark'] .prose code {
-	color: #a5b4fc;
+	color: #f0b38c;
 }
 
 .prose pre {

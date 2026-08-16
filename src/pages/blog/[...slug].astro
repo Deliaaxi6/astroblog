@@ -72,11 +72,18 @@ const articleLd = JSON.stringify({
 		gap: 28px;
 		padding: 28px;
 	}
+	.post-main {
+		background: rgba(255, 255, 255, 0.72);
+		border-radius: 16px;
+		padding-bottom: 6px;
+	}
+	[data-theme='dark'] .post-main {
+		background: rgba(30, 26, 22, 0.6);
+	}
 	.post-cover {
 		width: 100%;
-		border-radius: 14px;
+		border-radius: 12px;
 		margin-bottom: 22px;
-		border: 1px solid var(--card-border);
 	}
 	.meta-sep {
 		color: var(--text-mute);
