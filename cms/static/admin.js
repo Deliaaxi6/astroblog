@@ -1,512 +1,558 @@
-/* 纸上拾光 管理台 · 交互逻辑（档案柜版） */
-var statusEl = document.getElementById('status');
+(() => {
+  'use strict';
 
-function setStatus(msg, cls) {
-  statusEl.className = 'show ' + (cls || 'info');
-  statusEl.textContent = msg;
-}
+  const $ = (s) => document.querySelector(s);
+  const $$ = (s) => document.querySelectorAll(s);
+  const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const pad = (n) => String(n).padStart(2, '0');
+  const fmtDate = (d) => d ? `${d.slice(0, 4)}-${d.slice(5, 7)}-${d.slice(8, 10)}` : '—';
+  const nowDate = () => new Date().toISOString().slice(0, 10);
 
-function api(path, payload) {
-  var opts = { method: 'POST', headers: { 'Content-Type': 'application/json' } };
-  opts.body = JSON.stringify(payload || {});
-  return fetch(path, opts).then(function (r) { return r.json(); });
-}
+  let curTab = 'dash';
+  let posts = [];
+  let moments = [];
+  let musicItems = [];
+  let curPostId = null;
+  let curMomentId = null;
+  let mdTimer = null;
 
-function getApi(path) {
-  return fetch(path).then(function (r) { return r.json(); });
-}
+  const setStatus = (msg, type = 'info') => {
+    const el = $('#status');
+    el.textContent = msg;
+    el.className = 'show ' + type;
+    clearTimeout(el._t);
+    el._t = setTimeout(() => el.classList.remove('show'), 4000);
+  };
 
-function esc(s) {
-  return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-}
-
-/* ============ 极简 Markdown 渲染（管理台预览用） ============ */
-function mdInline(s) {
-  s = esc(s);
-  s = s.replace(/`([^`]+)`/g, '<code>$1</code>');
-  s = s.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
-  s = s.replace(/\*([^*]+)\*/g, '<em>$1</em>');
-  s = s.replace(/!\[([^\]]*)\]\(([^)\s]+)\)/g, '<img src="$2" alt="$1">');
-  s = s.replace(/\[([^\]]+)\]\(([^)\s]+)\)/g, '<a href="$2" target="_blank">$1</a>');
-  return s;
-}
-
-function renderMd(src) {
-  var lines = String(src || '').replace(/\r\n/g, '\n').split('\n');
-  var out = [], inCode = false, codeBuf = [], list = null, i, m;
-  function closeList() {
-    if (list) { out.push(list === 'ul' ? '</ul>' : '</ol>'); list = null; }
-  }
-  for (i = 0; i < lines.length; i++) {
-    var line = lines[i];
-    if (/^```/.test(line)) {
-      if (inCode) {
-        out.push('<pre><code>' + esc(codeBuf.join('\n')) + '</code></pre>');
-        codeBuf = []; inCode = false;
-      } else { closeList(); inCode = true; }
-      continue;
-    }
-    if (inCode) { codeBuf.push(line); continue; }
-    if ((m = /^(#{1,4})\s+(.*)$/.exec(line))) {
-      closeList();
-      out.push('<h' + m[1].length + '>' + mdInline(m[2]) + '</h' + m[1].length + '>');
-      continue;
-    }
-    if (/^---+$/.test(line.trim())) { closeList(); out.push('<hr>'); continue; }
-    if (/^>\s?/.test(line)) {
-      closeList();
-      out.push('<blockquote>' + mdInline(line.replace(/^>\s?/, '')) + '</blockquote>');
-      continue;
-    }
-    if ((m = /^[-*]\s+(.*)$/.exec(line))) {
-      if (list !== 'ul') { closeList(); out.push('<ul>'); list = 'ul'; }
-      out.push('<li>' + mdInline(m[1]) + '</li>');
-      continue;
-    }
-    if ((m = /^\d+\.\s+(.*)$/.exec(line))) {
-      if (list !== 'ol') { closeList(); out.push('<ol>'); list = 'ol'; }
-      out.push('<li>' + mdInline(m[1]) + '</li>');
-      continue;
-    }
-    closeList();
-    if (line.trim() !== '') out.push('<p>' + mdInline(line) + '</p>');
-  }
-  closeList();
-  if (inCode) out.push('<pre><code>' + esc(codeBuf.join('\n')) + '</code></pre>');
-  return out.join('');
-}
-
-/* ============ 档案柜导航 ============ */
-var tabs = document.querySelectorAll('#drawer button');
-
-function goTab(name) {
-  tabs.forEach(function (b) { b.classList.remove('active'); });
-  var target = Array.prototype.filter.call(tabs, function (b) { return b.dataset.tab === name; })[0];
-  if (target) target.classList.add('active');
-  document.querySelectorAll('.panel').forEach(function (p) { p.classList.remove('show'); });
-  document.getElementById('panel-' + name).classList.add('show');
-  statusEl.className = '';
-  if (name === 'posts' && !postListLoaded) loadPosts();
-  if (name === 'moments' && !momentListLoaded) loadMoments();
-  if (name === 'friends') loadDataTab('friends');
-  if (name === 'projects') loadDataTab('projects');
-  if (name === 'albums') loadDataTab('albums');
-  if (name === 'music' && !musicListLoaded) loadMusicTab();
-  if (name === 'dash' && !dashLoaded) loadDash();
-}
-
-tabs.forEach(function (btn) {
-  btn.addEventListener('click', function () { goTab(btn.dataset.tab); });
-});
-
-/* ============ 档案总览（Dashboard） ============ */
-var dashLoaded = false;
-
-function loadDash() {
-  dashLoaded = true;
-  var grid = document.getElementById('statGrid');
-  var rec = document.getElementById('recentPosts');
-  rec.innerHTML = '<div class="empty">读取中…</div>';
-  Promise.all([
-    api('/api/posts/list').catch(function () { return {}; }),
-    api('/api/moments/list').catch(function () { return {}; }),
-    getApi('/api/site-data/all').catch(function () { return {}; }),
-    getApi('/api/music/playlist').catch(function () { return {}; })
-  ]).then(function (rs) {
-    var posts = rs[0].posts || [];
-    var moments = rs[1].moments || [];
-    var data = rs[2].data || {};
-    var songIds = rs[3].ids || [];
-    var drafts = posts.filter(function (p) { return p.draft; }).length;
-    var tagSet = {};
-    posts.forEach(function (p) { (p.tags || []).forEach(function (t) { tagSet[t] = 1; }); });
-    var vals = {
-      '文章': posts.length, '说说': moments.length, '友链': (data.friends || []).length,
-      '项目': (data.projects || []).length, '相册': (data.albums || []).length,
-      '歌单': songIds.length, '草稿': drafts, '标签': Object.keys(tagSet).length
-    };
-    var i = 0;
-    grid.querySelectorAll('.stat').forEach(function (s) {
-      var num = s.querySelector('.num');
-      var lbl = s.querySelector('.lbl');
-      var key = lbl.textContent.replace('· ', '').trim();
-      if (key in vals) num.textContent = vals[key];
-      i++;
+  const postJson = async (url, data) => {
+    const r = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data || {})
     });
-    if (!posts.length) {
-      rec.innerHTML = '<div class="empty">还没有文章。<br><b onclick="goTab(\'posts\');newPost()">写第一篇 →</b></div>';
+    const j = await r.json();
+    if (!j.success) throw new Error(j.message || '请求失败');
+    return j;
+  };
+
+  const getJson = async (url) => {
+    const r = await fetch(url);
+    const j = await r.json();
+    if (!j.success) throw new Error(j.message || '请求失败');
+    return j;
+  };
+
+  /* ============ 导航 ============ */
+  const TABS = {
+    dash:    { title: '档案总览',   no: 'FILE / OVERVIEW' },
+    posts:   { title: '文章与草稿', no: 'FILE / ARTICLES' },
+    moments: { title: '说说',       no: 'FILE / MOMENTS' },
+    friends: { title: '友链',       no: 'FILE / FRIENDS' },
+    projects:{ title: '项目',       no: 'FILE / PROJECTS' },
+    albums:  { title: '相册',       no: 'FILE / ALBUMS' },
+    picbed:  { title: '光影图床',   no: 'FILE / PICBED' },
+    music:   { title: '歌单',       no: 'FILE / MUSIC' }
+  };
+  const LOADERS = {
+    dash: loadDash, posts: loadPosts, moments: loadMoments,
+    friends: () => loadDataTab('friends'), projects: () => loadDataTab('projects'),
+    albums: () => loadDataTab('albums'), picbed: null, music: () => loadMusicTab()
+  };
+
+  function goTab(name) {
+    curTab = name;
+    $$('.panel').forEach((p) => p.classList.remove('show'));
+    $('#panel-' + name).classList.add('show');
+    $$('#drawer button').forEach((b) => b.classList.toggle('active', b.dataset.tab === name));
+    const t = TABS[name];
+    $('#topbarTitle').innerHTML = `${t.title} <span class="no">${t.no}</span>`;
+    if (LOADERS[name]) LOADERS[name]();
+  }
+  $$('#drawer button').forEach((b) => b.addEventListener('click', () => goTab(b.dataset.tab)));
+
+  /* ============ 操作箱 ============ */
+  let ops = [];
+  try { ops = JSON.parse(localStorage.getItem('cms_ops') || '[]'); } catch (e) { ops = []; }
+
+  const saveOps = () => {
+    localStorage.setItem('cms_ops', JSON.stringify(ops));
+    renderOps();
+  };
+  const addOp = (label) => {
+    ops.unshift({ t: new Date().toLocaleTimeString('zh-CN', { hour12: false }), label });
+    if (ops.length > 30) ops.pop();
+    saveOps();
+  };
+  const renderOps = () => {
+    const dot = $('#opDot');
+    if (ops.length) {
+      dot.style.display = 'flex';
+      dot.textContent = ops.length;
+      dot.classList.add('ping');
+    } else {
+      dot.style.display = 'none';
+    }
+    const ul = $('#opList');
+    if (!ops.length) {
+      ul.innerHTML = '<li class="opbox-empty">暂无待处理操作</li>';
       return;
     }
-    var recent = posts.slice(0, 5).map(function (p, i) {
-      return '<div class="list-item">' +
-        '<div class="list-idx">' + String(i + 1).padStart(2, '0') + '</div>' +
-        '<div class="list-main"><h4>' + (p.draft ? '<span class="draft-mark">● 草稿</span>' : '') + esc(p.title) + '</h4>' +
-        '<p><span class="badge mute">' + esc(p.pubDate) + '</span>' + esc(p.id) + '</p></div>' +
-        '<div class="list-actions"><button class="btn btn-ghost btn-sm" onclick="goTab(\'posts\');editPost(\'' + esc(p.id) + '\')">编辑</button></div>' +
-        '</div>';
-    }).join('');
-    rec.innerHTML = recent;
+    ul.innerHTML = ops.map((o, i) =>
+      `<li><span>${esc(o.label)}</span><i>${esc(o.t)}</i><button data-i="${i}" title="移除">移除</button></li>`
+    ).join('');
+    ul.querySelectorAll('button').forEach((b) =>
+      b.addEventListener('click', () => { ops.splice(+b.dataset.i, 1); saveOps(); }));
+  };
+  $('#opBoxBtn').addEventListener('click', () => $('#opBoxDrop').classList.toggle('open'));
+  $('#opClear').addEventListener('click', () => { ops = []; saveOps(); });
+  document.addEventListener('click', (e) => {
+    if (!e.target.closest('.opbox')) $('#opBoxDrop').classList.remove('open');
   });
-}
+  $('#deployBtn').addEventListener('click', () =>
+    setStatus('本地直写模式：内容已写入仓库，站点构建后即生效。', 'info'));
+  renderOps();
 
-/* ============ 音乐歌单 ============ */
-var musicListLoaded = false;
-var musicCache = [];
-
-function loadMusicTab(force) {
-  musicListLoaded = true;
-  var box = document.getElementById('musicList');
-  box.innerHTML = '<div class="empty">加载中…</div>';
-  getApi('/api/music/playlist').then(function (d) {
-    if (!d.success) { box.innerHTML = '<div class="empty">' + esc(d.message) + '</div>'; return; }
-    if (!d.ids.length) {
-      musicCache = [];
-      box.innerHTML = '<div class="empty">歌单为空。<br><b onclick="document.getElementById(\'musicIdInput\').focus()">输入歌曲 ID 添加 →</b></div>';
-      return;
-    }
-    getApi('/api/music?ids=' + d.ids.join(',')).then(function (list) {
-      musicCache = (list || []).map(function (s) {
-        return { id: s.id, name: s.name || '未知歌曲', artist: s.artist || '', cover: s.cover || '' };
-      });
-      renderMusicList();
-    }).catch(function () { box.innerHTML = '<div class="empty">网易云元数据加载失败（网络问题），可稍后重试</div>'; });
-  }).catch(function () { box.innerHTML = '<div class="empty">加载失败</div>'; });
-}
-
-function renderMusicList() {
-  var box = document.getElementById('musicList');
-  if (!musicCache.length) { box.innerHTML = '<div class="empty">歌单为空</div>'; return; }
-  box.innerHTML = musicCache.map(function (s, i) {
-    return '<div class="list-item">' +
-      '<div class="list-idx">' + String(i + 1).padStart(2, '0') + '</div>' +
-      '<img class="music-cover" src="' + esc(s.cover) + '" alt="">' +
-      '<div class="list-main"><h4>' + esc(s.name) + '</h4>' +
-      '<p><span class="badge mute">' + esc(s.id) + '</span>' + esc(s.artist) + '</p></div>' +
-      '<div class="list-actions"><button class="btn btn-seal btn-sm" onclick="removeMusic(' + i + ')">移除</button></div>' +
-      '</div>';
-  }).join('');
-}
-
-function addMusic() {
-  var inp = document.getElementById('musicIdInput');
-  var id = (inp.value || '').trim();
-  if (!id) { setStatus('请输入歌曲 ID', 'err'); return; }
-  getApi('/api/music?ids=' + encodeURIComponent(id)).then(function (list) {
-    var s = list && list[0];
-    if (!s || s.error) { setStatus('未找到该歌曲（ID 无效或网络异常）', 'err'); return; }
-    if (musicCache.some(function (x) { return x.id === s.id; })) { setStatus('该歌曲已在歌单中', 'info'); return; }
-    musicCache.push({ id: s.id, name: s.name, artist: s.artist, cover: s.cover });
-    inp.value = '';
-    renderMusicList();
-    setStatus('已添加：' + s.name, 'ok');
-  });
-}
-
-function removeMusic(i) {
-  musicCache.splice(i, 1);
-  renderMusicList();
-  setStatus('已从歌单移除，点击"保存歌单"生效', 'info');
-}
-
-function saveMusic() {
-  if (!musicCache.length) { setStatus('歌单为空，至少保留一首', 'err'); return; }
-  api('/api/music/playlist', { ids: musicCache.map(function (s) { return s.id; }) }).then(function (d) {
-    setStatus(d.success ? d.message : (d.message || '保存失败'), d.success ? 'ok' : 'err');
-  });
-}
-
-/* ============ 文章 ============ */
-var postListLoaded = false;
-var editingPostId = null;
-
-function loadPosts() {
-  postListLoaded = true;
-  api('/api/posts/list').then(function (d) {
-    var box = document.getElementById('postList');
-    if (!d.success) { box.innerHTML = '<div class="empty">' + esc(d.message) + '</div>'; return; }
-    if (!d.posts.length) {
-      box.innerHTML = '<div class="empty">还没有文章。<br><b onclick="newPost()">写第一篇 →</b></div>';
-      return;
-    }
-    box.innerHTML = d.posts.map(function (p, i) {
-      var tags = (p.tags || []).map(function (t) { return '<span class="badge hi">' + esc(t) + '</span>'; }).join('');
-      return '<div class="list-item">' +
-        '<div class="list-idx">' + String(i + 1).padStart(2, '0') + '</div>' +
-        '<div class="list-main"><h4>' + (p.draft ? '<span class="draft-mark">● 草稿</span>' : '') + esc(p.title) + '</h4>' +
-        '<p><span class="badge mute">' + esc(p.pubDate) + '</span>' + tags + esc(p.id) + ' · ' + p.wordCount + ' 字</p></div>' +
-        '<div class="list-actions">' +
-        '<button class="btn btn-ghost btn-sm" onclick="editPost(\'' + esc(p.id) + '\')">编辑</button>' +
-        '<button class="btn btn-seal btn-sm" onclick="deletePost(\'' + esc(p.id) + '\')">删除</button>' +
-        '</div></div>';
-    }).join('');
-  }).catch(function () { document.getElementById('postList').innerHTML = '<div class="empty">后端未运行</div>'; });
-}
-
-function newPost() { editPost('new'); }
-
-function bindLivePreview(box) {
-  var ta = box.querySelector('#f_content');
-  var pv = box.querySelector('#f_preview');
-  if (!ta || !pv) return;
-  var t = null;
-  var render = function () { pv.innerHTML = renderMd(ta.value); };
-  ta.addEventListener('input', function () { clearTimeout(t); t = setTimeout(render, 250); });
-  render();
-}
-
-function editPost(id) {
-  editingPostId = id;
-  document.getElementById('postListCard').style.display = 'none';
-  document.getElementById('postEditorCard').style.display = 'block';
-  document.getElementById('postEditorTitle').textContent = id === 'new' ? '写新文章' : '编辑文章';
-  var box = document.getElementById('postEditor');
-  box.innerHTML = '<div class="empty">加载中…</div>';
-  var fill = function (fm) {
-    fm = fm || {};
-    var tags = (fm.tags || []).join(', ');
-    box.innerHTML =
-      '<div class="field"><label>ID（文件名，仅字母数字下划线连字符；留空自动生成）</label>' +
-      '<input id="f_id" placeholder="如 my-new-post" value="' + esc(id !== 'new' ? id : '') + '"></div>' +
-      '<div class="field"><label>标题</label><input id="f_title" value="' + esc(fm.title || '') + '"></div>' +
-      '<div class="field-grid">' +
-      '<div class="field"><label>日期（YYYY-MM-DD）</label><input id="f_pubDate" value="' + esc(fm.pubDate || '') + '"></div>' +
-      '<div class="field"><label>标签（逗号分隔）</label><input id="f_tags" value="' + esc(tags) + '"></div>' +
-      '</div>' +
-      '<div class="field"><label>描述</label><input id="f_desc" value="' + esc(fm.description || '') + '"></div>' +
-      '<div class="field"><label>封面图 URL</label><input id="f_cover" value="' + esc(fm.cover || '') + '"></div>' +
-      '<div class="field field-check"><input type="checkbox" id="f_draft" ' + (fm.draft ? 'checked' : '') + '><label for="f_draft">草稿（不发布）</label></div>' +
-      '<div class="field"><label>正文（Markdown，左侧书写右侧实时预览）</label></div>' +
-      '<div class="pane">' +
-      '<div class="pane-col"><div class="pane-cap">WRITE / 草稿纸</div>' +
-      '<textarea id="f_content" rows="16">' + esc(fm.content || '') + '</textarea></div>' +
-      '<div class="pane-col"><div class="pane-cap">PREVIEW / 成品页</div>' +
-      '<div id="f_preview" class="md-preview">渲染中…</div></div>' +
-      '</div>' +
-      '<div class="row">' +
-      '<button class="btn btn-hi" onclick="savePost()">保存更改</button>' +
-      (id !== 'new' ? '<button class="btn btn-seal" onclick="deletePost(editingPostId)">删除</button>' : '') +
-      '<button class="btn btn-ghost" onclick="backToPosts()">取消</button>' +
-      '</div>';
-    bindLivePreview(box);
-  };
-  if (id === 'new') { fill({}); return; }
-  api('/api/posts/get', { id: id }).then(function (d) {
-    if (!d.success) { box.innerHTML = '<div class="empty">' + esc(d.message) + '</div>'; return; }
-    var fm = d.post.frontmatter || {};
-    fm.content = d.post.content;
-    fill(fm);
-  }).catch(function () { box.innerHTML = '<div class="empty">后端未运行</div>'; });
-}
-
-function savePost() {
-  var id = document.getElementById('f_id').value.trim();
-  var fm = {
-    title: document.getElementById('f_title').value.trim(),
-    description: document.getElementById('f_desc').value.trim(),
-    pubDate: document.getElementById('f_pubDate').value.trim(),
-    tags: document.getElementById('f_tags').value.split(/[,，]/).map(function (s) { return s.trim(); }).filter(Boolean),
-    cover: document.getElementById('f_cover').value.trim(),
-    draft: document.getElementById('f_draft').checked
-  };
-  var content = document.getElementById('f_content').value;
-  api('/api/posts/save', { id: id, frontmatter: fm, content: content }).then(function (d) {
-    if (d.success) { setStatus(d.message + '（构建后生效）', 'ok'); backToPosts(); }
-    else { setStatus(d.message, 'err'); }
-  }).catch(function () { setStatus('请求失败，检查后端', 'err'); });
-}
-
-function deletePost(id) {
-  if (!confirm('确定删除文章「' + id + '」？此操作不可撤销。')) return;
-  api('/api/posts/delete', { id: id }).then(function (d) {
-    setStatus(d.message, d.success ? 'ok' : 'err');
-    backToPosts();
-  }).catch(function () { setStatus('请求失败，检查后端', 'err'); });
-}
-
-function backToPosts() {
-  postListLoaded = false;
-  document.getElementById('postListCard').style.display = 'block';
-  document.getElementById('postEditorCard').style.display = 'none';
-  loadPosts();
-}
-
-/* ============ 说说 ============ */
-var momentListLoaded = false;
-var editingMomentId = null;
-
-function loadMoments() {
-  momentListLoaded = true;
-  api('/api/moments/list').then(function (d) {
-    var box = document.getElementById('momentList');
-    if (!d.success) { box.innerHTML = '<div class="empty">' + esc(d.message) + '</div>'; return; }
-    if (!d.moments.length) {
-      box.innerHTML = '<div class="empty">还没有说说。<br><b onclick="newMoment()">写第一条 →</b></div>';
-      return;
-    }
-    box.innerHTML = d.moments.map(function (m, i) {
-      var imgs = (m.images || []).length;
-      return '<div class="list-item">' +
-        '<div class="list-idx">' + String(i + 1).padStart(2, '0') + '</div>' +
-        '<div class="list-main"><h4>' + esc(m.content.slice(0, 60)) + (m.content.length > 60 ? '…' : '') + '</h4>' +
-        '<p><span class="badge mute">' + esc(m.date) + '</span>' +
-        (m.location ? '<span class="badge seal">📍 ' + esc(m.location) + '</span>' : '') +
-        (imgs ? '<span class="badge">' + imgs + ' 张图</span>' : '') + esc(m.id) + '</p></div>' +
-        '<div class="list-actions">' +
-        '<button class="btn btn-ghost btn-sm" onclick="editMoment(\'' + esc(m.id) + '\')">编辑</button>' +
-        '<button class="btn btn-seal btn-sm" onclick="deleteMoment(\'' + esc(m.id) + '\')">删除</button>' +
-        '</div></div>';
-    }).join('');
-  }).catch(function () { document.getElementById('momentList').innerHTML = '<div class="empty">后端未运行</div>'; });
-}
-
-function newMoment() { editMoment('new'); }
-
-function editMoment(id) {
-  editingMomentId = id;
-  document.getElementById('momentListCard').style.display = 'none';
-  document.getElementById('momentEditorCard').style.display = 'block';
-  document.getElementById('momentEditorTitle').textContent = id === 'new' ? '写新说说' : '编辑说说';
-  var box = document.getElementById('momentEditor');
-  box.innerHTML = '<div class="empty">加载中…</div>';
-  var fill = function (fm) {
-    fm = fm || {};
-    var imgs = (fm.images || []).join('\n');
-    box.innerHTML =
-      '<div class="field"><label>ID（留空自动生成）</label>' +
-      '<input id="m_id" value="' + esc(id !== 'new' ? id : '') + '"></div>' +
-      '<div class="field-grid">' +
-      '<div class="field"><label>日期时间（YYYY-MM-DD HH:MM:SS）</label><input id="m_date" value="' + esc(fm.date || '') + '"></div>' +
-      '<div class="field"><label>地点</label><input id="m_location" value="' + esc(fm.location || '') + '"></div>' +
-      '</div>' +
-      '<div class="field"><label>图片 URL（每行一个）</label><textarea id="m_images" rows="4" class="code">' + esc(imgs) + '</textarea></div>' +
-      '<div class="field"><label>内容</label><textarea id="m_content" rows="6">' + esc(fm.content || '') + '</textarea></div>' +
-      '<div class="row">' +
-      '<button class="btn btn-hi" onclick="saveMoment()">保存更改</button>' +
-      (id !== 'new' ? '<button class="btn btn-seal" onclick="deleteMoment(editingMomentId)">删除</button>' : '') +
-      '<button class="btn btn-ghost" onclick="backToMoments()">取消</button>' +
-      '</div>';
-  };
-  if (id === 'new') { fill({}); return; }
-  api('/api/moments/list').then(function (d) {
-    var m = (d.moments || []).filter(function (x) { return x.id === id; })[0];
-    if (!m) { box.innerHTML = '<div class="empty">未找到该说说</div>'; return; }
-    fill({ date: m.date, location: m.location, images: m.images, content: m.content });
-  }).catch(function () { box.innerHTML = '<div class="empty">后端未运行</div>'; });
-}
-
-function saveMoment() {
-  var id = document.getElementById('m_id').value.trim();
-  var fm = {
-    date: document.getElementById('m_date').value.trim(),
-    location: document.getElementById('m_location').value.trim(),
-    images: document.getElementById('m_images').value.split('\n').map(function (s) { return s.trim(); }).filter(Boolean)
-  };
-  var content = document.getElementById('m_content').value;
-  api('/api/moments/save', { id: id, frontmatter: fm, content: content }).then(function (d) {
-    if (d.success) { setStatus(d.message + '（构建后生效）', 'ok'); backToMoments(); }
-    else { setStatus(d.message, 'err'); }
-  }).catch(function () { setStatus('请求失败，检查后端', 'err'); });
-}
-
-function deleteMoment(id) {
-  if (!confirm('确定删除这条说说？')) return;
-  api('/api/moments/delete', { id: id }).then(function (d) {
-    setStatus(d.message, d.success ? 'ok' : 'err');
-    backToMoments();
-  }).catch(function () { setStatus('请求失败，检查后端', 'err'); });
-}
-
-function backToMoments() {
-  momentListLoaded = false;
-  document.getElementById('momentListCard').style.display = 'block';
-  document.getElementById('momentEditorCard').style.display = 'none';
-  loadMoments();
-}
-
-/* ============ 数据 JSON 页（友链/项目/相册） ============ */
-function loadDataTab(target) {
-  getApi('/api/site-data/all').then(function (d) {
-    if (!d.success) { setStatus(d.message, 'err'); return; }
-    document.getElementById(target + 'Json').value = JSON.stringify(d.data[target] || [], null, 2);
-  }).catch(function () { setStatus('后端未运行', 'err'); });
-}
-
-function saveDataTab(target) {
-  var items;
-  try { items = JSON.parse(document.getElementById(target + 'Json').value); }
-  catch (e) { setStatus('JSON 格式错误: ' + e.message, 'err'); return; }
-  api('/api/site-data/sync', { target: target, items: items }).then(function (d) {
-    setStatus(d.message + '（构建后生效）', d.success ? 'ok' : 'err');
-  }).catch(function () { setStatus('请求失败，检查后端', 'err'); });
-}
-
-/* ============ 图床（R2） ============ */
-var file = null;
-var drop = document.getElementById('dropZone');
-var input = document.getElementById('fileInput');
-var uploadBtn = document.getElementById('uploadBtn');
-var resultEl = document.getElementById('result');
-
-function pick(f) {
-  if (!f) return;
-  if (!/^image\//.test(f.type)) { setStatus('仅支持图片文件', 'err'); return; }
-  if (f.size > 10 * 1024 * 1024) { setStatus('图片超过 10MB 限制', 'err'); return; }
-  file = f;
-  uploadBtn.disabled = false;
-  setStatus('已选择: ' + f.name + ' (' + (f.size / 1024).toFixed(0) + ' KB)', 'info');
-  resultEl.classList.remove('show');
-}
-drop.addEventListener('click', function () { input.click(); });
-input.addEventListener('change', function () { pick(input.files[0]); });
-drop.addEventListener('dragover', function (e) { e.preventDefault(); drop.classList.add('drag'); });
-drop.addEventListener('dragleave', function () { drop.classList.remove('drag'); });
-drop.addEventListener('drop', function (e) {
-  e.preventDefault(); drop.classList.remove('drag');
-  pick(e.dataTransfer.files[0]);
-});
-
-document.getElementById('testBtn').addEventListener('click', function () {
-  setStatus('正在测试 R2 连接...', 'info');
-  fetch('/api/picbed/test')
-    .then(function (r) { return r.json(); })
-    .then(function (d) { setStatus(d.message, d.success ? 'ok' : 'err'); })
-    .catch(function () { setStatus('网络异常，无法连接后端', 'err'); });
-});
-
-uploadBtn.addEventListener('click', function () {
-  if (!file) return;
-  uploadBtn.disabled = true;
-  setStatus('正在上传...', 'info');
-  var fd = new FormData();
-  fd.append('file', file);
-  var xhr = new XMLHttpRequest();
-  xhr.open('POST', '/api/picbed/upload');
-  xhr.onload = function () {
-    uploadBtn.disabled = false;
+  /* ============ 仪表盘 ============ */
+  async function loadDash() {
+    const grid = $('#statGrid');
+    grid.innerHTML = Array(8).fill(0).map((_, i) =>
+      `<div class="stat"><div class="num">…</div><div class="lbl">${['文章','说说','友链','项目','相册','歌单','草稿','标签'][i]}</div></div>`
+    ).join('');
+    $('#recentPosts').innerHTML = '<div class="empty">读取中…</div>';
     try {
-      var d = JSON.parse(xhr.responseText);
-      if (d.success) {
-        setStatus('上传成功 ✓', 'ok');
-        document.getElementById('preview').src = d.url;
-        document.getElementById('url').value = d.url;
-        resultEl.classList.add('show');
-      } else { setStatus(d.message, 'err'); }
-    } catch (e) { setStatus('响应解析失败', 'err'); }
-  };
-  xhr.onerror = function () {
-    uploadBtn.disabled = false;
-    setStatus('上传请求失败，检查后端是否运行', 'err');
-  };
-  xhr.send(fd);
-});
+      const [p, m, fr, pr, al, mu] = await Promise.all([
+        postJson('/api/posts/list'),
+        postJson('/api/moments/list'),
+        getJson('/api/site-data/all'),
+        getJson('/api/site-data/all'),
+        getJson('/api/site-data/all'),
+        getJson('/api/music/playlist')
+      ]);
+      posts = p.posts || [];
+      moments = m.moments || [];
+      const friends = (fr.friends || []).length;
+      const projects = (pr.projects || []).length;
+      const albums = (al.albums || []).length;
+      const draft = posts.filter((x) => !x.draft).length;
+      const tags = new Set();
+      posts.forEach((x) => (x.tags || []).forEach((t) => tags.add(t)));
+      const nums = [posts.length, moments.length, friends, projects, albums, (mu.playlist || []).length, draft, tags.size];
+      const labels = ['文章', '说说', '友链', '项目', '相册', '歌单', '草稿', '标签'];
+      grid.innerHTML = nums.map((n, i) =>
+        `<div class="stat"><div class="num">${n}</div><div class="lbl">${labels[i]}</div></div>`
+      ).join('');
+      $('#recentPosts').innerHTML = posts.length
+        ? posts.slice(0, 5).map((x, i) => recentRow(x, i)).join('')
+        : '<div class="empty">还没有文章。<b onclick="goTab(\'posts\');newPost()">写第一篇 →</b></div>';
+    } catch (e) {
+      grid.innerHTML = '<div class="empty">数据加载失败：' + esc(e.message) + '</div>';
+      $('#recentPosts').innerHTML = '';
+    }
+  }
+  const recentRow = (x, i) => `
+    <div class="list-item" style="cursor:pointer" onclick="openPost('${esc(x.id)}')">
+      <span class="list-idx">NO.${pad(i + 1)}</span>
+      <div class="list-main">
+        <h4>${x.draft ? '<span class="draft-mark">[草稿]</span>' : ''}${esc(x.title || '(无标题)')}</h4>
+        <p>${fmtDate(x.date)}${x.tags && x.tags.length ? ' · ' + x.tags.map((t) => `<span class="badge hi">#${esc(t)}</span>`).join('') : ''}</p>
+      </div>
+      <span class="badge">${x.draft ? '草稿' : '已发布'}</span>
+    </div>`;
 
-document.getElementById('copyBtn').addEventListener('click', function () {
-  var u = document.getElementById('url');
-  u.select();
-  if (navigator.clipboard) navigator.clipboard.writeText(u.value);
-  setStatus('链接已复制到剪贴板 ✓', 'ok');
-});
+  /* ============ 文章 ============ */
+  async function loadPosts() {
+    $('#postListCard').style.display = '';
+    $('#postEditorCard').style.display = 'none';
+    $('#postList').innerHTML = '<div class="empty">加载中…</div>';
+    try {
+      const j = await postJson('/api/posts/list');
+      posts = j.posts || [];
+      $('#postList').innerHTML = posts.length
+        ? posts.map((x, i) => `
+          <div class="list-item">
+            <span class="list-idx">NO.${pad(i + 1)}</span>
+            <div class="list-main">
+              <h4>${x.draft ? '<span class="draft-mark">[草稿]</span>' : ''}${esc(x.title || '(无标题)')}</h4>
+              <p>${fmtDate(x.date)}${x.tags && x.tags.length ? ' · ' + x.tags.map((t) => `<span class="badge hi">#${esc(t)}</span>`).join('') : ''}</p>
+            </div>
+            <div class="list-actions">
+              <button class="btn btn-ghost btn-sm" onclick="openPost('${esc(x.id)}')">编辑</button>
+              <button class="btn btn-seal btn-sm" onclick="delPost('${esc(x.id)}')">删除</button>
+            </div>
+          </div>`).join('')
+        : '<div class="empty">还没有文章。<b onclick="newPost()">写第一篇 →</b></div>';
+    } catch (e) {
+      $('#postList').innerHTML = '<div class="empty">加载失败：' + esc(e.message) + '</div>';
+    }
+  }
+  function newPost() { openPost(null); }
+  async function openPost(id) {
+    curPostId = id;
+    let post = { title: '', content: '', tags: [], date: nowDate(), description: '', draft: true };
+    if (id) {
+      try {
+        const j = await postJson('/api/posts/get', { id });
+        post = j.post || post;
+      } catch (e) { setStatus('读取失败：' + e.message, 'err'); }
+    }
+    $('#postListCard').style.display = 'none';
+    $('#postEditorCard').style.display = '';
+    $('#postEditorTitle').innerHTML = `${id ? '编辑文章' : '新文章'} <span class="no">FILE / EDIT</span>`;
+    $('#postEditor').innerHTML = `
+      <div class="edit-flex">
+        <div class="edit-main">
+          <div class="edit-cap">MARKDOWN / SOURCE</div>
+          <input class="field" id="p-title" placeholder="文章标题" value="${esc(post.title || '')}">
+          <div class="edit-cap" style="margin-top:12px">CONTENT / 实时预览</div>
+          <div style="display:flex;gap:8px;margin-bottom:8px">
+            <button class="btn btn-ghost btn-sm" onclick="toggleMdView()" id="mdViewBtn">预览开</button>
+          </div>
+          <textarea id="p-content" placeholder="# 开始书写…">${esc(post.content || '')}</textarea>
+        </div>
+        <div class="edit-side">
+          <div class="edit-cap">META / 元数据</div>
+          <div class="field"><label>ID（留空自动生成）</label><input id="p-id" value="${esc(post.id || '')}" placeholder="slug-${Date.now().toString(36)}"></div>
+          <div class="field"><label>日期</label><input id="p-date" type="date" value="${esc(post.date || nowDate())}"></div>
+          <div class="field"><label>标签（逗号分隔）</label><input id="p-tags" value="${esc((post.tags || []).join(', '))}" placeholder="随笔, 生活"></div>
+          <div class="field"><label>摘要</label><textarea id="p-desc" rows="3" placeholder="文章摘要">${esc(post.description || '')}</textarea></div>
+          <div class="field field-check"><input type="checkbox" id="p-draft" ${post.draft ? 'checked' : ''}><label>保存为草稿（不发布）</label></div>
+          <div class="row">
+            <button class="btn btn-hi" id="savePostBtn">保存</button>
+            <button class="btn btn-seal" id="savePostPubBtn">保存并发布</button>
+          </div>
+        </div>
+      </div>`;
+    const ta = $('#p-content');
+    const pre = document.createElement('div');
+    pre.className = 'md-preview';
+    ta.parentNode.insertBefore(pre, ta.nextSibling);
+    const render = () => { pre.innerHTML = mdToHtml(ta.value); pre.style.display = $('#mdViewBtn').textContent.includes('预览开') ? 'none' : ''; };
+    ta.addEventListener('input', () => { clearTimeout(mdTimer); mdTimer = setTimeout(render, 250); });
+    render();
+    $('#savePostBtn').addEventListener('click', () => savePost(false));
+    $('#savePostPubBtn').addEventListener('click', () => savePost(true));
+  }
+  function toggleMdView() {
+    const b = $('#mdViewBtn');
+    const pre = $('#postEditor .md-preview');
+    const ta = $('#p-content');
+    if (b.textContent.includes('预览开')) {
+      b.textContent = '预览关';
+      pre.style.display = '';
+      ta.style.display = 'none';
+    } else {
+      b.textContent = '预览开';
+      pre.style.display = 'none';
+      ta.style.display = '';
+    }
+  }
+  async function savePost(publish) {
+    const payload = {
+      id: $('#p-id').value.trim() || null,
+      title: $('#p-title').value.trim(),
+      content: $('#p-content').value,
+      tags: $('#p-tags').value.split(/[,，]/).map((t) => t.trim()).filter(Boolean),
+      date: $('#p-date').value || nowDate(),
+      description: $('#p-desc').value.trim(),
+      draft: !publish && $('#p-draft').checked
+    };
+    if (!payload.title) { setStatus('请填写标题', 'err'); return; }
+    try {
+      const j = await postJson('/api/posts/save', payload);
+      setStatus(publish ? `已发布：${j.title || payload.title}` : `已保存草稿：${payload.title}`, 'ok');
+      addOp(`${publish ? '发布' : '保存'}文章：${payload.title}`);
+      backToPosts();
+    } catch (e) { setStatus('保存失败：' + e.message, 'err'); }
+  }
+  async function delPost(id) {
+    if (!confirm('确定删除这篇文章？此操作不可恢复。')) return;
+    try {
+      await postJson('/api/posts/delete', { id });
+      addOp('删除文章：' + id);
+      loadPosts();
+    } catch (e) { setStatus('删除失败：' + e.message, 'err'); }
+  }
+  function backToPosts() { curPostId = null; loadPosts(); }
 
-/* 初始加载：档案总览 */
-loadDash();
+  /* ============ 说说 ============ */
+  async function loadMoments() {
+    $('#momentListCard').style.display = '';
+    $('#momentEditorCard').style.display = 'none';
+    $('#momentList').innerHTML = '<div class="empty">加载中…</div>';
+    try {
+      const j = await postJson('/api/moments/list');
+      moments = j.moments || [];
+      $('#momentList').innerHTML = moments.length
+        ? moments.map((x, i) => `
+          <div class="list-item">
+            <span class="list-idx">NO.${pad(i + 1)}</span>
+            <div class="list-main">
+              <h4>${esc(x.text || '(空)')}</h4>
+              <p>${fmtDate(x.date)}${x.pinned ? ' <span class="badge seal">置顶</span>' : ''}</p>
+            </div>
+            <div class="list-actions">
+              <button class="btn btn-ghost btn-sm" onclick="openMoment('${esc(x.id)}')">编辑</button>
+              <button class="btn btn-seal btn-sm" onclick="delMoment('${esc(x.id)}')">删除</button>
+            </div>
+          </div>`).join('')
+        : '<div class="empty">还没有说说。<b onclick="newMoment()">写第一条 →</b></div>';
+    } catch (e) {
+      $('#momentList').innerHTML = '<div class="empty">加载失败：' + esc(e.message) + '</div>';
+    }
+  }
+  function newMoment() { openMoment(null); }
+  async function openMoment(id) {
+    curMomentId = id;
+    let item = { text: '', date: nowDate(), pinned: false };
+    if (id) {
+      try {
+        const j = await postJson('/api/moments/list');
+        item = (j.moments || []).find((x) => x.id === id) || item;
+      } catch (e) { setStatus('读取失败：' + e.message, 'err'); }
+    }
+    $('#momentListCard').style.display = 'none';
+    $('#momentEditorCard').style.display = '';
+    $('#momentEditorTitle').innerHTML = `${id ? '编辑说说' : '新说说'} <span class="no">FILE / EDIT</span>`;
+    $('#momentEditor').innerHTML = `
+      <div class="field"><label>内容</label><textarea id="m-text" rows="5">${esc(item.text || '')}</textarea></div>
+      <div class="field-grid">
+        <div class="field"><label>日期</label><input id="m-date" type="date" value="${esc(item.date || nowDate())}"></div>
+        <div class="field field-check" style="align-self:end;margin-bottom:14px"><input type="checkbox" id="m-pinned" ${item.pinned ? 'checked' : ''}><label>置顶</label></div>
+      </div>
+      <div class="row">
+        <button class="btn btn-hi" id="saveMomentBtn">保存</button>
+      </div>`;
+    $('#saveMomentBtn').addEventListener('click', saveMoment);
+  }
+  async function saveMoment() {
+    const payload = {
+      id: curMomentId || null,
+      text: $('#m-text').value.trim(),
+      date: $('#m-date').value || nowDate(),
+      pinned: $('#m-pinned').checked
+    };
+    if (!payload.text) { setStatus('请填写内容', 'err'); return; }
+    try {
+      await postJson('/api/moments/save', payload);
+      setStatus('说说已保存', 'ok');
+      addOp('保存说说：' + payload.text.slice(0, 20));
+      backToMoments();
+    } catch (e) { setStatus('保存失败：' + e.message, 'err'); }
+  }
+  async function delMoment(id) {
+    if (!confirm('确定删除这条说说？')) return;
+    try {
+      await postJson('/api/moments/delete', { id });
+      addOp('删除说说：' + id);
+      loadMoments();
+    } catch (e) { setStatus('删除失败：' + e.message, 'err'); }
+  }
+  function backToMoments() { curMomentId = null; loadMoments(); }
+
+  /* ============ 数据类（友链/项目/相册） ============ */
+  const DATA_MAP = {
+    friends: ['friends', '友链'],
+    projects: ['projects', '项目'],
+    albums: ['albums', '相册']
+  };
+  async function loadDataTab(kind) {
+    const [key, label] = DATA_MAP[kind];
+    const el = $('#' + kind + 'Json');
+    el.disabled = true;
+    el.value = '读取中…';
+    try {
+      const j = await getJson('/api/site-data/all');
+      const arr = j[key] || [];
+      el.value = JSON.stringify(arr, null, 2);
+      setStatus(`${label}数据已读取（${arr.length} 条）`, 'ok');
+    } catch (e) {
+      el.value = '// 读取失败：' + e.message;
+      setStatus('读取失败：' + e.message, 'err');
+    } finally {
+      el.disabled = false;
+    }
+  }
+  async function saveDataTab(kind) {
+    const [key, label] = DATA_MAP[kind];
+    const el = $('#' + kind + 'Json');
+    let arr;
+    try {
+      arr = JSON.parse(el.value);
+      if (!Array.isArray(arr)) throw new Error('必须是数组');
+    } catch (e) {
+      setStatus('JSON 格式错误：' + e.message, 'err');
+      return;
+    }
+    try {
+      await postJson('/api/site-data/sync', { target: key, items: arr });
+      setStatus(`${label}已保存（${arr.length} 条）`, 'ok');
+      addOp(`更新${label}数据：${arr.length} 条`);
+    } catch (e) { setStatus('保存失败：' + e.message, 'err'); }
+  }
+
+  /* ============ 图床 ============ */
+  function initPicbed() {
+    const dz = $('#dropZone'), fi = $('#fileInput'), up = $('#uploadBtn'), test = $('#testBtn');
+    dz.addEventListener('click', () => fi.click());
+    ['dragenter', 'dragover'].forEach((ev) => dz.addEventListener(ev, (e) => { e.preventDefault(); dz.classList.add('drag'); }));
+    ['dragleave', 'drop'].forEach((ev) => dz.addEventListener(ev, (e) => { e.preventDefault(); dz.classList.remove('drag'); }));
+    dz.addEventListener('drop', (e) => {
+      const f = e.dataTransfer.files && e.dataTransfer.files[0];
+      if (f) pick(f);
+    });
+    fi.addEventListener('change', () => { if (fi.files[0]) pick(fi.files[0]); });
+    let curFile = null;
+    function pick(f) {
+      curFile = f;
+      up.disabled = false;
+      const img = $('#preview');
+      img.src = URL.createObjectURL(f);
+      $('#result').classList.add('show');
+    }
+    up.addEventListener('click', async () => {
+      if (!curFile) return;
+      const fd = new FormData();
+      fd.append('file', curFile);
+      up.disabled = true;
+      up.textContent = '上传中…';
+      try {
+        const r = await fetch('/api/picbed/upload', { method: 'POST', body: fd });
+        const j = await r.json();
+        if (!j.success) throw new Error(j.message || '上传失败');
+        $('#url').value = j.url;
+        $('#url').dataset.copied = '';
+        setStatus('上传成功', 'ok');
+        addOp('图床上传：' + curFile.name);
+      } catch (e) {
+        setStatus('上传失败：' + e.message, 'err');
+      } finally {
+        up.disabled = false;
+        up.textContent = '上传图片';
+      }
+    });
+    $('#copyBtn').addEventListener('click', () => {
+      const u = $('#url');
+      navigator.clipboard.writeText(u.value).then(() => {
+        const b = $('#copyBtn');
+        b.textContent = '已复制';
+        setTimeout(() => (b.textContent = '复制'), 1500);
+        setStatus('链接已复制', 'ok');
+      });
+    });
+    test.addEventListener('click', async () => {
+      test.disabled = true;
+      try {
+        const j = await getJson('/api/picbed/test');
+        setStatus(j.ok ? `连接正常：${j.bucket || ''}` : '连接失败：' + (j.error || ''), j.ok ? 'ok' : 'err');
+      } catch (e) { setStatus('测试失败：' + e.message, 'err'); }
+      finally { test.disabled = false; }
+    });
+  }
+
+  /* ============ 歌单 ============ */
+  async function loadMusicTab(force) {
+    $('#musicList').innerHTML = '<div class="empty">加载中…</div>';
+    try {
+      if (force) {
+        const j = await getJson('/api/music/playlist');
+        musicItems = j.playlist || [];
+      } else if (!musicItems.length) {
+        const j = await getJson('/api/music/playlist');
+        musicItems = j.playlist || [];
+      }
+      renderMusic();
+    } catch (e) {
+      $('#musicList').innerHTML = '<div class="empty">加载失败：' + esc(e.message) + '</div>';
+    }
+  }
+  function renderMusic() {
+    $('#musicList').innerHTML = musicItems.length
+      ? musicItems.map((x, i) => `
+        <div class="list-item">
+          ${x.cover ? `<img class="music-cover" src="${esc(x.cover)}" alt="">` : `<div class="music-cover" style="background:var(--hi-soft);display:flex;align-items:center;justify-content:center">♪</div>`}
+          <div class="list-main">
+            <h4>${esc(x.name || '(未知歌曲)')}</h4>
+            <p>${esc(x.artist || '')} <span class="badge mute">${esc(x.id || '')}</span></p>
+          </div>
+          <div class="list-actions">
+            <button class="btn btn-ghost btn-sm" onclick="delMusic(${i})">移除</button>
+          </div>
+        </div>`).join('')
+      : '<div class="empty">歌单为空，输入歌曲 ID 添加 →</div>';
+  }
+  async function addMusic() {
+    const id = $('#musicIdInput').value.trim();
+    if (!id) { setStatus('请先粘贴歌曲 ID', 'err'); return; }
+    try {
+      const j = await getJson('/api/music?ids=' + encodeURIComponent(id));
+      const list = j.music || [];
+      if (!list.length) { setStatus('未找到该歌曲', 'err'); return; }
+      musicItems = [...musicItems, ...list.filter((n) => !musicItems.some((o) => o.id === n.id))];
+      renderMusic();
+      setStatus(`已添加：${list[0].name}`, 'ok');
+    } catch (e) { setStatus('获取失败：' + e.message, 'err'); }
+  }
+  function delMusic(i) {
+    musicItems.splice(i, 1);
+    renderMusic();
+  }
+  async function saveMusic() {
+    try {
+      await postJson('/api/music/playlist', { ids: musicItems.map((x) => x.id) });
+      setStatus('歌单已保存', 'ok');
+      addOp('保存歌单：' + musicItems.length + ' 首');
+    } catch (e) { setStatus('保存失败：' + e.message, 'err'); }
+  }
+
+  /* ============ Markdown 预览 ============ */
+  function mdToHtml(md) {
+    const lines = md.replace(/\r/g, '').split('\n');
+    let html = '', inCode = false, codeBuf = [];
+    const pushCode = () => {
+      if (codeBuf.length) {
+        html += '<pre><code>' + esc(codeBuf.join('\n')) + '</code></pre>\n';
+        codeBuf = [];
+      }
+    };
+    for (const raw of lines) {
+      if (/^```/.test(raw.trim())) {
+        if (inCode) { inCode = false; pushCode(); }
+        else { pushCode(); inCode = true; }
+        continue;
+      }
+      if (inCode) { codeBuf.push(raw); continue; }
+      const t = raw.trim();
+      if (!t) { html += '<p><br></p>\n'; continue; }
+      let line = esc(raw);
+      line = line.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+                 .replace(/\*(.+?)\*/g, '<em>$1</em>')
+                 .replace(/`(.+?)`/g, '<code>$1</code>')
+                 .replace(/\[(.+?)\]\((.+?)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
+      if (/^###\s/.test(t)) html += '<h3>' + line.replace(/^###\s*/, '') + '</h3>\n';
+      else if (/^##\s/.test(t)) html += '<h2>' + line.replace(/^##\s*/, '') + '</h2>\n';
+      else if (/^#\s/.test(t)) html += '<h1>' + line.replace(/^#\s*/, '') + '</h1>\n';
+      else if (/^-\s/.test(t)) html += '<li>' + line.replace(/^-\s*/, '') + '</li>\n';
+      else if (/^\d+\.\s/.test(t)) html += '<li>' + line.replace(/^\d+\.\s*/, '') + '</li>\n';
+      else if (/^>\s?/.test(t)) html += '<blockquote>' + line.replace(/^>\s?/, '') + '</blockquote>\n';
+      else if (/^---+\s*$/.test(t)) html += '<hr>\n';
+      else if (/^!\[(.+?)\]\((.+?)\)/.test(raw)) {
+        const m = raw.match(/^!\[(.+?)\]\((.+?)\)/);
+        html += `<img src="${m[2]}" alt="${m[1]}">\n`;
+      } else html += '<p>' + line + '</p>\n';
+    }
+    if (inCode) pushCode();
+    html = html.replace(/(<li>[\s\S]*?<\/li>)\n/g, (m) => '<ul>' + m.replace(/\n/g, '') + '</ul>');
+    return html;
+  }
+
+  /* ============ 暴露给 HTML 内联调用 ============ */
+  Object.assign(window, {
+    goTab, newPost, openPost, backToPosts, delPost, toggleMdView,
+    newMoment, openMoment, backToMoments, delMoment,
+    loadDataTab, saveDataTab, addMusic, delMusic, saveMusic, loadMusicTab
+  });
+
+  /* ============ 初始化 ============ */
+  initPicbed();
+  goTab('dash');
+})();

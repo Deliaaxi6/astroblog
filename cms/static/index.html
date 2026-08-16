@@ -7,7 +7,7 @@
 <style>
 :root {
   --paper:#f4f3ef; --sheet:#fcfbf6; --sheet-2:#f6f4ec;
-  --line:rgba(35,35,43,.12); --line-strong:rgba(35,35,43,.24);
+  --line:rgba(35,35,43,.12); --line-strong:rgba(35,35,43,.26);
   --ink:#23232b; --sub:#5a5a66; --mute:#9b9ba6;
   --hi:#e8d24a; --hi-deep:#c9b432; --hi-soft:#fdf6c9;
   --seal:#b02e26; --seal-soft:#f7e3e0;
@@ -29,83 +29,167 @@ body::before {
   content:""; position:fixed; left:14px; top:0; bottom:0; width:2px;
   border-left:2px dashed rgba(35,35,43,.14); pointer-events:none;
 }
+button { font-family:inherit; }
 
-/* ===== 档案页头 ===== */
-.mast {
-  max-width:1080px; margin:0 auto 22px; position:relative;
-  padding:18px 22px 16px; background:var(--sheet);
-  border:1px solid var(--line); border-radius:6px;
-  box-shadow:0 1px 3px rgba(35,35,43,.05);
+/* ========== 主壳 ========== */
+.shell { max-width:1360px; margin:0 auto; padding:26px 26px 60px; }
+
+/* ========== 顶部操作栏 ========== */
+.topbar {
+  display:flex; align-items:center; justify-content:space-between; gap:16px;
+  background:var(--sheet); border:1px solid var(--line); border-radius:10px;
+  padding:14px 22px; margin-bottom:20px; box-shadow:0 1px 3px rgba(35,35,43,.06);
+  position:relative;
 }
-.mast::before {
+.topbar::before {
   content:""; position:absolute; left:0; top:0; bottom:0; width:5px;
   background:var(--hi);
 }
-.mast-row { display:flex; align-items:baseline; gap:12px; flex-wrap:wrap; }
-.mast-title {
-  font-family:var(--serif); font-size:26px; font-weight:900;
-  letter-spacing:.12em; line-height:1.2;
+.topbar-title {
+  font-family:var(--serif); font-size:22px; font-weight:900;
+  letter-spacing:.12em; display:flex; align-items:baseline; gap:12px;
 }
-.mast-title .mark {
-  display:inline-block; background:var(--hi); color:var(--ink);
-  padding:2px 10px; margin-right:8px;
-  box-shadow:inset 0 -2px 0 rgba(35,35,43,.18);
+.topbar-title .no {
+  font-family:var(--mono); font-size:11px; color:var(--mute);
+  letter-spacing:.22em; font-weight:400;
 }
-.mast-no {
-  font-family:var(--mono); font-size:12px; color:var(--mute);
-  letter-spacing:.22em;
-}
-.mast-sub {
-  margin-top:6px; font-family:var(--mono); font-size:11px;
-  color:var(--sub); letter-spacing:.06em;
-}
+.topbar-actions { display:flex; align-items:center; gap:12px; }
 
-/* ===== 档案柜布局：侧边导航 + 内容 ===== */
-.cabinet {
-  max-width:1080px; margin:0 auto; display:flex; gap:18px;
-  align-items:flex-start;
+/* 操作箱 */
+.opbox { position:relative; }
+.opbox-btn {
+  position:relative; width:46px; height:46px; border-radius:10px;
+  border:1px solid var(--line-strong); background:var(--sheet-2);
+  font-size:12px; font-weight:700; color:var(--sub); letter-spacing:.05em;
+  cursor:pointer; transition:all .18s;
 }
-.drawer {
-  width:168px; flex-shrink:0; position:sticky; top:20px;
-  background:var(--sheet); border:1px solid var(--line);
-  border-radius:6px; padding:10px 0; box-shadow:0 1px 3px rgba(35,35,43,.05);
+.opbox-btn:hover { background:var(--hi-soft); transform:translateY(-1px); }
+.reddot {
+  position:absolute; top:-6px; right:-6px; min-width:20px; height:20px;
+  padding:0 5px; border-radius:999px; background:var(--seal); color:#fff;
+  font-size:11px; font-weight:900; font-family:var(--mono);
+  display:flex; align-items:center; justify-content:center;
+  border:2px solid var(--sheet); box-shadow:0 0 0 1px rgba(176,46,38,.3);
 }
-.drawer-cap {
+.reddot.ping::after {
+  content:""; position:absolute; inset:0; border-radius:999px;
+  background:var(--seal); animation:dotPing 1.6s ease-out infinite; z-index:-1;
+}
+@keyframes dotPing {
+  0% { transform:scale(1); opacity:.7; }
+  100% { transform:scale(2.1); opacity:0; }
+}
+.opbox-drop {
+  position:absolute; right:0; top:56px; width:320px; z-index:60;
+  background:var(--sheet); border:1px solid var(--line-strong); border-radius:10px;
+  box-shadow:0 18px 40px rgba(35,35,43,.18); padding:16px;
+  display:none; animation:dropIn .18s ease-out;
+}
+.opbox-drop.open { display:block; }
+@keyframes dropIn { from { opacity:0; transform:translateY(-6px); } to { opacity:1; transform:none; } }
+.opbox-drop h4 {
+  font-family:var(--mono); font-size:12px; letter-spacing:.14em;
+  color:var(--sub); margin-bottom:10px; display:flex; justify-content:space-between;
+}
+.opbox-drop h4 b { color:var(--mute); font-weight:400; cursor:pointer; }
+.opbox-drop h4 b:hover { color:var(--seal); }
+.opbox-drop ul { list-style:none; max-height:240px; overflow-y:auto; }
+.opbox-drop li {
+  display:flex; justify-content:space-between; align-items:center; gap:10px;
+  padding:10px 12px; border-radius:6px; background:var(--sheet-2);
+  border:1px solid var(--line); margin-bottom:6px;
+}
+.opbox-drop li:last-child { margin-bottom:0; }
+.opbox-drop li span { font-size:12.5px; color:var(--sub); line-height:1.5; }
+.opbox-drop li i { font-style:normal; font-family:var(--mono); font-size:10px; color:var(--mute); flex-shrink:0; }
+.opbox-drop li button {
+  border:none; background:none; cursor:pointer; color:var(--mute);
+  font-size:13px; flex-shrink:0;
+}
+.opbox-drop li button:hover { color:var(--seal); }
+.opbox-empty { color:var(--mute); font-size:12px; text-align:center; padding:18px 0; font-family:var(--mono); }
+
+/* 部署按钮 */
+.btn-deploy {
+  display:inline-flex; align-items:center; gap:8px;
+  height:46px; padding:0 22px; border:none; border-radius:10px;
+  background:var(--seal); color:#f7ecea; font-size:13.5px; font-weight:900;
+  letter-spacing:.1em; cursor:pointer; box-shadow:0 3px 0 #8e1f19;
+  transition:all .18s;
+}
+.btn-deploy:hover { background:#c23a31; transform:translateY(-1px); }
+.btn-deploy:active { transform:translateY(1px); box-shadow:none; }
+
+/* ========== 主体 ========== */
+.shell-body { display:flex; gap:20px; align-items:flex-start; }
+
+/* 左侧导航 */
+.sidebar { width:230px; flex-shrink:0; position:sticky; top:26px; }
+.side-profile {
+  background:var(--sheet); border:1px solid var(--line); border-radius:10px;
+  padding:22px 16px; text-align:center; margin-bottom:14px;
+  box-shadow:0 1px 3px rgba(35,35,43,.06); position:relative;
+}
+.side-profile::after {
+  content:""; position:absolute; left:16px; right:16px; bottom:0; height:3px;
+  background:var(--hi); opacity:.8;
+}
+.side-avatar {
+  width:72px; height:72px; margin:0 auto 12px; border-radius:50%;
+  padding:3px; background:linear-gradient(135deg,var(--hi) 0%,var(--seal) 100%);
+  box-shadow:0 0 0 3px var(--hi-soft), 0 6px 16px rgba(176,46,38,.18);
+}
+.side-avatar .stamp {
+  width:100%; height:100%; border-radius:50%; background:var(--sheet);
+  display:flex; align-items:center; justify-content:center;
+  font-family:var(--serif); font-size:22px; font-weight:900; color:var(--seal);
+  border:2px dashed var(--line-strong);
+}
+.side-name { font-family:var(--serif); font-size:17px; font-weight:900; letter-spacing:.16em; }
+.side-role {
   font-family:var(--mono); font-size:10px; color:var(--mute);
-  letter-spacing:.24em; padding:4px 16px 10px;
-  border-bottom:1px dashed var(--line); margin-bottom:8px;
+  letter-spacing:.2em; margin-top:5px; text-transform:uppercase;
 }
-.drawer button {
+.side-nav {
+  background:var(--sheet); border:1px solid var(--line); border-radius:10px;
+  padding:10px 8px; box-shadow:0 1px 3px rgba(35,35,43,.06);
+}
+.side-nav .cap {
+  font-family:var(--mono); font-size:9.5px; color:var(--mute);
+  letter-spacing:.26em; padding:6px 12px 10px; border-bottom:1px dashed var(--line);
+  margin-bottom:8px;
+}
+.side-nav button {
   display:flex; align-items:center; gap:10px; width:100%;
-  padding:10px 16px; border:none; background:none; cursor:pointer;
-  font-family:var(--sans); font-size:14px; font-weight:700; color:var(--sub);
-  text-align:left; transition:all .16s; position:relative;
+  padding:11px 12px; border:none; border-radius:8px; background:none;
+  font-size:13.5px; font-weight:700; color:var(--sub); cursor:pointer;
+  text-align:left; transition:all .18s; position:relative;
 }
-.drawer button .dno {
+.side-nav button .dno {
   font-family:var(--mono); font-size:10px; color:var(--mute);
-  letter-spacing:.1em; width:26px; flex-shrink:0;
+  letter-spacing:.1em; width:30px; flex-shrink:0;
 }
-.drawer button:hover { background:var(--hi-soft); color:var(--ink); }
-.drawer button.active {
-  background:var(--hi-soft); color:var(--ink);
+.side-nav button:hover { background:var(--hi-soft); color:var(--ink); transform:translateX(2px); }
+.side-nav button.active {
+  background:var(--hi); color:var(--ink); transform:translateX(4px);
+  box-shadow:0 2px 0 var(--hi-deep);
 }
-.drawer button.active::before {
-  content:""; position:absolute; left:0; top:6px; bottom:6px; width:4px;
-  background:var(--hi-deep);
-}
-.drawer button.active .dno { color:var(--hi-deep); }
+.side-nav button.active .dno { color:#6b5d12; }
 
-.wrap { flex:1; min-width:0; }
+/* 内容舞台 */
+.stage { flex:1; min-width:0; }
 .panel { display:none; }
-.panel.show { display:block; animation:panelIn .22s ease-out; }
-@keyframes panelIn { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:none; } }
+.panel.show { display:block; animation:panelIn .24s ease-out; }
+@keyframes panelIn { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:none; } }
 
-/* ===== 档案纸面板 ===== */
 .sheet {
-  background:var(--sheet); border:1px solid var(--line);
-  border-radius:6px; padding:20px 24px 22px; margin-bottom:16px;
-  box-shadow:0 1px 3px rgba(35,35,43,.05);
-  position:relative;
+  background:var(--sheet); border:1px solid var(--line); border-radius:10px;
+  padding:20px 24px 22px; margin-bottom:16px;
+  box-shadow:0 1px 3px rgba(35,35,43,.06); position:relative;
+}
+.sheet::after {
+  content:""; position:absolute; left:24px; right:24px; bottom:0; height:1px;
+  background:var(--line-strong); opacity:.3;
 }
 .sheet-head {
   display:flex; align-items:center; justify-content:space-between;
@@ -124,18 +208,13 @@ body::before {
   content:""; width:10px; height:10px; background:var(--seal);
   transform:rotate(45deg); display:inline-block; flex-shrink:0;
 }
-.sheet-tip {
-  font-family:var(--mono); font-size:11px; color:var(--mute);
-  letter-spacing:.04em;
-}
+.sheet-tip { font-family:var(--mono); font-size:11px; color:var(--mute); letter-spacing:.04em; }
 
-/* ===== 档案总览（Dashboard） ===== */
-.stat-grid {
-  display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-bottom:16px;
-}
+/* ===== 档案总览 ===== */
+.stat-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-bottom:16px; }
 .stat {
-  background:var(--sheet); border:1px solid var(--line); border-radius:6px;
-  padding:16px 18px; position:relative; overflow:hidden;
+  background:var(--sheet-2); border:1px solid var(--line); border-radius:8px;
+  padding:14px 16px; position:relative; overflow:hidden;
 }
 .stat::after {
   content:""; position:absolute; left:0; top:0; bottom:0; width:4px;
@@ -144,22 +223,20 @@ body::before {
 .stat:nth-child(3n+2)::after { background:var(--seal); }
 .stat:nth-child(3n+3)::after { background:var(--blue); }
 .stat .num {
-  font-family:var(--mono); font-size:30px; font-weight:700;
-  letter-spacing:.04em; line-height:1;
+  font-family:var(--mono); font-size:28px; font-weight:700; letter-spacing:.04em; line-height:1;
 }
 .stat .lbl {
-  font-family:var(--serif); font-size:13px; font-weight:700;
-  color:var(--sub); margin-top:8px; letter-spacing:.14em;
+  font-family:var(--serif); font-size:12.5px; font-weight:700;
+  color:var(--sub); margin-top:7px; letter-spacing:.14em;
 }
 .stat .lbl::before { content:"· "; color:var(--mute); }
 
-/* ===== 按钮（印章/荧光/描边） ===== */
+/* ===== 按钮 ===== */
 .btn {
   display:inline-flex; align-items:center; gap:6px;
-  padding:9px 16px; border:none; border-radius:4px;
+  padding:9px 16px; border:none; border-radius:8px;
   font-size:13px; font-weight:700; cursor:pointer;
-  font-family:var(--sans); letter-spacing:.05em;
-  transition:all .18s; line-height:1;
+  font-family:var(--sans); letter-spacing:.05em; transition:all .18s; line-height:1;
 }
 .btn:active { transform:translateY(1px); }
 .btn-hi { background:var(--hi); color:var(--ink); box-shadow:0 2px 0 var(--hi-deep); }
@@ -173,7 +250,7 @@ body::before {
 
 /* ===== 状态条 ===== */
 #status {
-  display:none; margin-top:14px; padding:12px 16px; border-radius:4px;
+  display:none; margin-top:14px; padding:12px 16px; border-radius:8px;
   font-size:13px; font-weight:600; font-family:var(--mono);
   background:var(--sheet); border:1px solid var(--line);
 }
@@ -182,7 +259,7 @@ body::before {
 #status.err { border-left:4px solid var(--seal); color:var(--seal); }
 #status.info { border-left:4px solid var(--blue); color:var(--blue); }
 
-/* ===== 列表（档案条目） ===== */
+/* ===== 列表 ===== */
 .list-item {
   display:flex; align-items:center; gap:14px;
   padding:13px 10px; border-bottom:1px dashed var(--line);
@@ -201,14 +278,13 @@ body::before {
 .badge {
   display:inline-block; padding:1px 7px; border-radius:3px;
   font-size:11px; font-weight:700; font-family:var(--mono);
-  background:var(--blue-soft); color:var(--blue); margin-right:6px;
-  letter-spacing:.02em;
+  background:var(--blue-soft); color:var(--blue); margin-right:6px; letter-spacing:.02em;
 }
 .badge.hi { background:var(--hi-soft); color:#8a7a1e; }
 .badge.seal { background:var(--seal-soft); color:var(--seal); }
 .badge.mute { background:rgba(35,35,43,.06); color:var(--mute); }
 .list-actions { display:flex; gap:8px; flex-shrink:0; }
-.music-cover { width:44px; height:44px; border-radius:4px; object-fit:cover; flex-shrink:0; border:1px solid var(--line); }
+.music-cover { width:44px; height:44px; border-radius:6px; object-fit:cover; flex-shrink:0; border:1px solid var(--line); }
 .empty {
   color:var(--mute); font-size:13px; text-align:center; padding:30px 0;
   font-family:var(--mono); letter-spacing:.08em; line-height:2;
@@ -216,7 +292,7 @@ body::before {
 .empty b { color:var(--hi-deep); cursor:pointer; font-weight:700; }
 .empty b:hover { text-decoration:underline; }
 
-/* ===== 表单（档案登记表） ===== */
+/* ===== 表单 ===== */
 .field { margin-bottom:14px; }
 .field label {
   display:block; font-size:12px; font-weight:700; color:var(--sub);
@@ -224,7 +300,7 @@ body::before {
 }
 .field label::before { content:"■"; color:var(--hi); font-size:8px; margin-right:6px; vertical-align:1px; }
 .field input, .field textarea, .field select {
-  width:100%; padding:10px 13px; border-radius:4px;
+  width:100%; padding:10px 13px; border-radius:6px;
   border:1px solid var(--line-strong); background:#fff;
   color:var(--ink); font-size:13px; outline:none;
   font-family:var(--sans); transition:border-color .18s, box-shadow .18s;
@@ -241,32 +317,27 @@ body::before {
 .field-check label::before { display:none; }
 .row { display:flex; gap:10px; margin-top:16px; flex-wrap:wrap; }
 
-/* ===== 分栏编辑器（左写右览） ===== */
-.pane {
-  display:grid; grid-template-columns:1fr 1fr; gap:14px;
-  align-items:stretch; margin-top:6px;
-}
-.pane-col { min-width:0; }
-.pane-col .pane-cap {
+/* ===== 编辑器：左编辑 右元数据 ===== */
+.edit-flex { display:flex; gap:16px; align-items:stretch; }
+.edit-main { flex:1; min-width:0; }
+.edit-side { width:300px; flex-shrink:0; }
+.edit-cap {
   font-family:var(--mono); font-size:10px; color:var(--mute);
-  letter-spacing:.22em; margin-bottom:6px;
+  letter-spacing:.22em; margin-bottom:7px;
 }
-.pane-col textarea {
-  width:100%; min-height:340px; padding:13px 15px; border-radius:4px;
+.edit-main textarea {
+  width:100%; min-height:420px; padding:13px 15px; border-radius:6px;
   border:1px solid var(--line-strong); background:#fff;
-  color:var(--ink); font-size:13px; line-height:1.75;
-  outline:none; resize:vertical; font-family:var(--mono);
-  transition:border-color .18s, box-shadow .18s;
+  color:var(--ink); font-size:13px; line-height:1.75; outline:none; resize:vertical;
+  font-family:var(--mono); transition:border-color .18s, box-shadow .18s;
 }
-.pane-col textarea:focus { border-color:var(--hi-deep); box-shadow:0 0 0 3px var(--hi-soft); }
-.pane-col .md-preview {
-  min-height:340px; padding:13px 15px; border-radius:4px;
+.edit-main textarea:focus { border-color:var(--hi-deep); box-shadow:0 0 0 3px var(--hi-soft); }
+.edit-main .md-preview {
+  min-height:420px; padding:13px 15px; border-radius:6px;
   border:1px solid var(--line); background:var(--sheet-2);
   color:var(--ink); font-size:13px; line-height:1.9; overflow:auto;
 }
-.md-preview h1,.md-preview h2,.md-preview h3,.md-preview h4 {
-  margin:12px 0 7px; font-weight:900; letter-spacing:.03em;
-}
+.md-preview h1,.md-preview h2,.md-preview h3,.md-preview h4 { margin:12px 0 7px; font-weight:900; letter-spacing:.03em; }
 .md-preview h1 { font-size:20px; } .md-preview h2 { font-size:17px; }
 .md-preview h3 { font-size:15px; } .md-preview h4 { font-size:13px; }
 .md-preview p { margin:7px 0; }
@@ -288,216 +359,235 @@ body::before {
 
 /* ===== 图床 ===== */
 #picbedPanel .drop {
-  border:2px dashed var(--line-strong); border-radius:6px;
+  border:2px dashed var(--line-strong); border-radius:8px;
   padding:38px 20px; text-align:center; cursor:pointer;
   transition:all .2s; background:var(--sheet-2);
 }
 #picbedPanel .drop:hover, #picbedPanel .drop.drag {
   border-color:var(--hi-deep); background:var(--hi-soft);
 }
-#picbedPanel .drop .big { font-size:38px; margin-bottom:10px; }
 #picbedPanel .drop p { color:var(--mute); font-size:13px; font-weight:600; }
 #picbedPanel .drop p b { color:var(--blue); }
 #fileInput { display:none; }
 #result { display:none; margin-top:16px; }
 #result.show { display:block; }
 #result img {
-  width:100%; max-height:260px; object-fit:contain; border-radius:6px;
+  width:100%; max-height:260px; object-fit:contain; border-radius:8px;
   border:1px solid var(--line); background:var(--sheet-2); padding:6px;
 }
 .linkbox { display:flex; gap:8px; margin-top:10px; }
 .linkbox input {
-  flex:1; padding:10px 13px; border-radius:4px; border:1px solid var(--line-strong);
-  background:#fff; color:var(--sub); font-size:12px; outline:none;
-  font-family:var(--mono);
+  flex:1; padding:10px 13px; border-radius:6px; border:1px solid var(--line-strong);
+  background:#fff; color:var(--sub); font-size:12px; outline:none; font-family:var(--mono);
 }
 .linkbox button {
-  padding:0 18px; border:none; border-radius:4px; cursor:pointer;
+  padding:0 18px; border:none; border-radius:6px; cursor:pointer;
   background:var(--hi); color:var(--ink); font-weight:700;
   font-family:var(--sans); font-size:13px; box-shadow:0 2px 0 var(--hi-deep);
 }
 .linkbox button:hover { background:#eede63; }
 
-@media (max-width:860px) {
-  .cabinet { flex-direction:column; }
-  .drawer { width:100%; position:static; display:flex; flex-wrap:wrap; gap:4px; padding:10px; }
-  .drawer-cap { display:none; }
-  .drawer button { width:auto; padding:8px 12px; border-radius:4px; }
-  .drawer button .dno { display:none; }
-  .drawer button.active::before { display:none; }
-  .drawer button.active { background:var(--hi); }
+@media (max-width:980px) {
+  .shell-body { flex-direction:column; }
+  .sidebar { width:100%; position:static; }
+  .side-profile { display:none; }
+  .side-nav { display:flex; flex-wrap:wrap; gap:6px; padding:10px; }
+  .side-nav .cap { display:none; }
+  .side-nav button { width:auto; padding:9px 13px; }
+  .side-nav button .dno { display:none; }
+  .side-nav button.active { transform:none; }
   .stat-grid { grid-template-columns:repeat(2,1fr); }
-  .pane { grid-template-columns:1fr; }
-  .pane-col textarea, .pane-col .md-preview { min-height:220px; }
+  .edit-flex { flex-direction:column; }
+  .edit-side { width:100%; }
 }
 @media (max-width:560px) {
   .field-grid { grid-template-columns:1fr; }
   .list-item { flex-wrap:wrap; }
+  .topbar-title .no { display:none; }
 }
 </style>
 </head>
 <body>
 
-<header class="mast">
-  <div class="mast-row">
-    <div class="mast-title"><span class="mark">纸上拾光</span>管理台</div>
-    <div class="mast-no">MANAGE / NO.001</div>
-  </div>
-  <p class="mast-sub">内容直写仓库 · 构建后生效 · 修改前建议先 Git 提交</p>
-</header>
+<div class="shell">
 
-<div class="cabinet">
-  <nav class="drawer" id="drawer">
-    <div class="drawer-cap">ARCHIVE / INDEX</div>
-    <button data-tab="dash" class="active"><span class="dno">NO.01</span>📊 档案总览</button>
-    <button data-tab="posts"><span class="dno">NO.02</span>📁 文章</button>
-    <button data-tab="moments"><span class="dno">NO.03</span>💬 说说</button>
-    <button data-tab="friends"><span class="dno">NO.04</span>🤝 友链</button>
-    <button data-tab="projects"><span class="dno">NO.05</span>🚀 项目</button>
-    <button data-tab="albums"><span class="dno">NO.06</span>📸 相册</button>
-    <button data-tab="picbed"><span class="dno">NO.07</span>🖼 图床</button>
-    <button data-tab="music"><span class="dno">NO.08</span>🎵 音乐</button>
-  </nav>
-
-  <main class="wrap">
-
-    <section class="panel show" id="panel-dash">
-      <div class="sheet">
-        <div class="sheet-head">
-          <h2>档案总览 <span class="no">FILE / OVERVIEW</span></h2>
-        </div>
-        <div class="stat-grid" id="statGrid">
-          <div class="stat"><div class="num">—</div><div class="lbl">文章</div></div>
-          <div class="stat"><div class="num">—</div><div class="lbl">说说</div></div>
-          <div class="stat"><div class="num">—</div><div class="lbl">友链</div></div>
-          <div class="stat"><div class="num">—</div><div class="lbl">项目</div></div>
-          <div class="stat"><div class="num">—</div><div class="lbl">相册</div></div>
-          <div class="stat"><div class="num">—</div><div class="lbl">歌单</div></div>
-          <div class="stat"><div class="num">—</div><div class="lbl">草稿</div></div>
-          <div class="stat"><div class="num">—</div><div class="lbl">标签</div></div>
+  <!-- 顶部操作栏 -->
+  <header class="topbar">
+    <h1 class="topbar-title" id="topbarTitle">档案总览 <span class="no" id="topbarNo">FILE / OVERVIEW</span></h1>
+    <div class="topbar-actions">
+      <div class="opbox">
+        <button class="opbox-btn" id="opBoxBtn" title="待同步操作">待办<span class="reddot ping" id="opDot" style="display:none">0</span></button>
+        <div class="opbox-drop" id="opBoxDrop">
+          <h4>待同步操作 <b id="opClear">清空</b></h4>
+          <ul id="opList"><li class="opbox-empty">暂无待处理操作</li></ul>
         </div>
       </div>
-      <div class="sheet">
-        <div class="sheet-head">
-          <h2>最近收录 <span class="no">FILE / RECENT</span></h2>
-          <button class="btn btn-ghost btn-sm" onclick="goTab('posts')">全部文章 →</button>
-        </div>
-        <div id="recentPosts"><div class="empty">读取中…</div></div>
-      </div>
-    </section>
+      <button class="btn-deploy" id="deployBtn">全部上传并部署</button>
+    </div>
+  </header>
 
-    <section class="panel" id="panel-posts">
-      <div class="sheet" id="postListCard">
-        <div class="sheet-head">
-          <h2>文章列表 <span class="no">FILE / ARTICLES</span></h2>
-          <button class="btn btn-hi btn-sm" onclick="newPost()">＋ 写新文章</button>
-        </div>
-        <div id="postList"><div class="empty">加载中…</div></div>
-      </div>
-      <div class="sheet" id="postEditorCard" style="display:none">
-        <div class="sheet-head">
-          <h2 id="postEditorTitle">编辑文章 <span class="no">FILE / EDIT</span></h2>
-          <button class="btn btn-ghost btn-sm" onclick="backToPosts()">← 返回列表</button>
-        </div>
-        <div id="postEditor"></div>
-      </div>
-    </section>
+  <div class="shell-body">
 
-    <section class="panel" id="panel-moments">
-      <div class="sheet" id="momentListCard">
-        <div class="sheet-head">
-          <h2>说说列表 <span class="no">FILE / MOMENTS</span></h2>
-          <button class="btn btn-hi btn-sm" onclick="newMoment()">＋ 写新说说</button>
-        </div>
-        <div id="momentList"><div class="empty">加载中…</div></div>
+    <!-- 左侧导航 -->
+    <aside class="sidebar">
+      <div class="side-profile">
+        <div class="side-avatar"><div class="stamp">拾</div></div>
+        <div class="side-name">纸上拾光</div>
+        <div class="side-role">Archive Manager</div>
       </div>
-      <div class="sheet" id="momentEditorCard" style="display:none">
-        <div class="sheet-head">
-          <h2 id="momentEditorTitle">编辑说说 <span class="no">FILE / EDIT</span></h2>
-          <button class="btn btn-ghost btn-sm" onclick="backToMoments()">← 返回列表</button>
-        </div>
-        <div id="momentEditor"></div>
-      </div>
-    </section>
+      <nav class="side-nav" id="drawer">
+        <div class="cap">ARCHIVE / INDEX</div>
+        <button data-tab="dash" class="active"><span class="dno">NO.01</span>档案总览</button>
+        <button data-tab="posts"><span class="dno">NO.02</span>文章与草稿</button>
+        <button data-tab="moments"><span class="dno">NO.03</span>说说</button>
+        <button data-tab="friends"><span class="dno">NO.04</span>友链</button>
+        <button data-tab="projects"><span class="dno">NO.05</span>项目</button>
+        <button data-tab="albums"><span class="dno">NO.06</span>相册</button>
+        <button data-tab="picbed"><span class="dno">NO.07</span>光影图床</button>
+        <button data-tab="music"><span class="dno">NO.08</span>歌单</button>
+      </nav>
+    </aside>
 
-    <section class="panel" id="panel-friends">
-      <div class="sheet">
-        <div class="sheet-head">
-          <h2>友链数据 <span class="no">FILE / FRIENDS</span></h2>
-          <button class="btn btn-ghost btn-sm" onclick="loadDataTab('friends')">↻ 重新读取</button>
-        </div>
-        <p class="sheet-tip" style="margin-bottom:12px">编辑下方 JSON 数组，保存后覆盖 src/data/friends.ts</p>
-        <textarea class="field code" id="friendsJson" rows="12" style="width:100%;border-radius:4px;border:1px solid rgba(35,35,43,.24);background:#fff;color:#23232b;font-family:Consolas,Menlo,monospace;font-size:12px;line-height:1.6;padding:11px 14px;resize:vertical;outline:none"></textarea>
-        <div class="row"><button class="btn btn-hi" onclick="saveDataTab('friends')">保存更改</button></div>
-      </div>
-    </section>
+    <!-- 内容舞台 -->
+    <main class="stage">
 
-    <section class="panel" id="panel-projects">
-      <div class="sheet">
-        <div class="sheet-head">
-          <h2>项目数据 <span class="no">FILE / PROJECTS</span></h2>
-          <button class="btn btn-ghost btn-sm" onclick="loadDataTab('projects')">↻ 重新读取</button>
-        </div>
-        <p class="sheet-tip" style="margin-bottom:12px">编辑下方 JSON 数组，保存后覆盖 src/data/projects.ts</p>
-        <textarea class="field code" id="projectsJson" rows="12" style="width:100%;border-radius:4px;border:1px solid rgba(35,35,43,.24);background:#fff;color:#23232b;font-family:Consolas,Menlo,monospace;font-size:12px;line-height:1.6;padding:11px 14px;resize:vertical;outline:none"></textarea>
-        <div class="row"><button class="btn btn-hi" onclick="saveDataTab('projects')">保存更改</button></div>
-      </div>
-    </section>
-
-    <section class="panel" id="panel-albums">
-      <div class="sheet">
-        <div class="sheet-head">
-          <h2>相册数据 <span class="no">FILE / ALBUMS</span></h2>
-          <button class="btn btn-ghost btn-sm" onclick="loadDataTab('albums')">↻ 重新读取</button>
-        </div>
-        <p class="sheet-tip" style="margin-bottom:12px">编辑下方 JSON 数组，保存后覆盖 src/data/albums.ts</p>
-        <textarea class="field code" id="albumsJson" rows="12" style="width:100%;border-radius:4px;border:1px solid rgba(35,35,43,.24);background:#fff;color:#23232b;font-family:Consolas,Menlo,monospace;font-size:12px;line-height:1.6;padding:11px 14px;resize:vertical;outline:none"></textarea>
-        <div class="row"><button class="btn btn-hi" onclick="saveDataTab('albums')">保存更改</button></div>
-      </div>
-    </section>
-
-    <section class="panel" id="panel-picbed">
-      <div class="sheet">
-        <div class="sheet-head">
-          <h2>R2 图床 <span class="no">FILE / PICBED</span></h2>
-        </div>
-        <div class="drop" id="dropZone">
-          <div class="big">🖼️</div>
-          <p>点击选择或拖拽图片到此处<br><b>JPG / PNG / GIF / WebP / SVG / AVIF</b> · 最大 10MB</p>
-        </div>
-        <input type="file" id="fileInput" accept="image/*">
-        <div class="row">
-          <button class="btn btn-ghost" id="testBtn">测试连接</button>
-          <button class="btn btn-hi" id="uploadBtn" disabled>上传图片</button>
-        </div>
-        <div id="result">
-          <img id="preview" alt="preview">
-          <div class="linkbox">
-            <input id="url" readonly>
-            <button id="copyBtn">复制</button>
+      <section class="panel show" id="panel-dash">
+        <div class="sheet">
+          <div class="sheet-head">
+            <h2>档案总览 <span class="no">FILE / OVERVIEW</span></h2>
+          </div>
+          <div class="stat-grid" id="statGrid">
+            <div class="stat"><div class="num">—</div><div class="lbl">文章</div></div>
+            <div class="stat"><div class="num">—</div><div class="lbl">说说</div></div>
+            <div class="stat"><div class="num">—</div><div class="lbl">友链</div></div>
+            <div class="stat"><div class="num">—</div><div class="lbl">项目</div></div>
+            <div class="stat"><div class="num">—</div><div class="lbl">相册</div></div>
+            <div class="stat"><div class="num">—</div><div class="lbl">歌单</div></div>
+            <div class="stat"><div class="num">—</div><div class="lbl">草稿</div></div>
+            <div class="stat"><div class="num">—</div><div class="lbl">标签</div></div>
           </div>
         </div>
-      </div>
-    </section>
-
-    <section class="panel" id="panel-music">
-      <div class="sheet">
-        <div class="sheet-head">
-          <h2>首页播放器歌单 <span class="no">FILE / MUSIC</span></h2>
-          <button class="btn btn-ghost btn-sm" onclick="loadMusicTab(true)">↻ 重新读取</button>
+        <div class="sheet">
+          <div class="sheet-head">
+            <h2>最近收录 <span class="no">FILE / RECENT</span></h2>
+            <button class="btn btn-ghost btn-sm" onclick="goTab('posts')">全部文章 →</button>
+          </div>
+          <div id="recentPosts"><div class="empty">读取中…</div></div>
         </div>
-        <p class="sheet-tip" style="margin-bottom:12px">歌曲来自网易云。获取 ID：网易云网页版播放/分享页 URL 中的数字，如 music.163.com/#/song?id=1809646618</p>
-        <div class="row">
-          <input class="field" id="musicIdInput" placeholder="粘贴网易云歌曲 ID，如 1809646618" style="flex:1;margin-bottom:0">
-          <button class="btn btn-hi" onclick="addMusic()">＋ 添加</button>
-        </div>
-        <div id="musicList"><div class="empty">加载中…</div></div>
-        <div class="row"><button class="btn btn-hi" onclick="saveMusic()">💾 保存歌单</button></div>
-      </div>
-    </section>
+      </section>
 
-    <div id="status"></div>
-  </main>
+      <section class="panel" id="panel-posts">
+        <div class="sheet" id="postListCard">
+          <div class="sheet-head">
+            <h2>文章与草稿 <span class="no">FILE / ARTICLES</span></h2>
+            <button class="btn btn-hi btn-sm" onclick="newPost()">＋ 写新文章</button>
+          </div>
+          <div id="postList"><div class="empty">加载中…</div></div>
+        </div>
+        <div class="sheet" id="postEditorCard" style="display:none">
+          <div class="sheet-head">
+            <h2 id="postEditorTitle">编辑文章 <span class="no">FILE / EDIT</span></h2>
+            <button class="btn btn-ghost btn-sm" onclick="backToPosts()">← 返回列表</button>
+          </div>
+          <div id="postEditor"></div>
+        </div>
+      </section>
+
+      <section class="panel" id="panel-moments">
+        <div class="sheet" id="momentListCard">
+          <div class="sheet-head">
+            <h2>说说 <span class="no">FILE / MOMENTS</span></h2>
+            <button class="btn btn-hi btn-sm" onclick="newMoment()">＋ 写新说说</button>
+          </div>
+          <div id="momentList"><div class="empty">加载中…</div></div>
+        </div>
+        <div class="sheet" id="momentEditorCard" style="display:none">
+          <div class="sheet-head">
+            <h2 id="momentEditorTitle">编辑说说 <span class="no">FILE / EDIT</span></h2>
+            <button class="btn btn-ghost btn-sm" onclick="backToMoments()">← 返回列表</button>
+          </div>
+          <div id="momentEditor"></div>
+        </div>
+      </section>
+
+      <section class="panel" id="panel-friends">
+        <div class="sheet">
+          <div class="sheet-head">
+            <h2>友链数据 <span class="no">FILE / FRIENDS</span></h2>
+            <button class="btn btn-ghost btn-sm" onclick="loadDataTab('friends')">↻ 重新读取</button>
+          </div>
+          <p class="sheet-tip" style="margin-bottom:12px">编辑下方 JSON 数组，保存后覆盖 src/data/friends.ts</p>
+          <textarea class="field code" id="friendsJson" rows="12" style="width:100%;border-radius:6px;border:1px solid rgba(35,35,43,.26);background:#fff;color:#23232b;font-family:Consolas,Menlo,monospace;font-size:12px;line-height:1.6;padding:11px 14px;resize:vertical;outline:none"></textarea>
+          <div class="row"><button class="btn btn-hi" onclick="saveDataTab('friends')">保存更改</button></div>
+        </div>
+      </section>
+
+      <section class="panel" id="panel-projects">
+        <div class="sheet">
+          <div class="sheet-head">
+            <h2>项目数据 <span class="no">FILE / PROJECTS</span></h2>
+            <button class="btn btn-ghost btn-sm" onclick="loadDataTab('projects')">↻ 重新读取</button>
+          </div>
+          <p class="sheet-tip" style="margin-bottom:12px">编辑下方 JSON 数组，保存后覆盖 src/data/projects.ts</p>
+          <textarea class="field code" id="projectsJson" rows="12" style="width:100%;border-radius:6px;border:1px solid rgba(35,35,43,.26);background:#fff;color:#23232b;font-family:Consolas,Menlo,monospace;font-size:12px;line-height:1.6;padding:11px 14px;resize:vertical;outline:none"></textarea>
+          <div class="row"><button class="btn btn-hi" onclick="saveDataTab('projects')">保存更改</button></div>
+        </div>
+      </section>
+
+      <section class="panel" id="panel-albums">
+        <div class="sheet">
+          <div class="sheet-head">
+            <h2>相册数据 <span class="no">FILE / ALBUMS</span></h2>
+            <button class="btn btn-ghost btn-sm" onclick="loadDataTab('albums')">↻ 重新读取</button>
+          </div>
+          <p class="sheet-tip" style="margin-bottom:12px">编辑下方 JSON 数组，保存后覆盖 src/data/albums.ts</p>
+          <textarea class="field code" id="albumsJson" rows="12" style="width:100%;border-radius:6px;border:1px solid rgba(35,35,43,.26);background:#fff;color:#23232b;font-family:Consolas,Menlo,monospace;font-size:12px;line-height:1.6;padding:11px 14px;resize:vertical;outline:none"></textarea>
+          <div class="row"><button class="btn btn-hi" onclick="saveDataTab('albums')">保存更改</button></div>
+        </div>
+      </section>
+
+      <section class="panel" id="panel-picbed">
+        <div class="sheet">
+          <div class="sheet-head">
+            <h2>光影图床 <span class="no">FILE / PICBED</span></h2>
+          </div>
+          <div class="drop" id="dropZone">
+            <p>点击选择或拖拽图片到此处<br><b>JPG / PNG / GIF / WebP / SVG / AVIF</b> · 最大 10MB</p>
+          </div>
+          <input type="file" id="fileInput" accept="image/*">
+          <div class="row">
+            <button class="btn btn-ghost" id="testBtn">测试连接</button>
+            <button class="btn btn-hi" id="uploadBtn" disabled>上传图片</button>
+          </div>
+          <div id="result">
+            <img id="preview" alt="preview">
+            <div class="linkbox">
+              <input id="url" readonly>
+              <button id="copyBtn">复制</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel" id="panel-music">
+        <div class="sheet">
+          <div class="sheet-head">
+            <h2>首页播放器歌单 <span class="no">FILE / MUSIC</span></h2>
+            <button class="btn btn-ghost btn-sm" onclick="loadMusicTab(true)">↻ 重新读取</button>
+          </div>
+          <p class="sheet-tip" style="margin-bottom:12px">歌曲来自网易云。获取 ID：网易云网页版播放/分享页 URL 中的数字，如 music.163.com/#/song?id=1809646618</p>
+          <div class="row">
+            <input class="field" id="musicIdInput" placeholder="粘贴网易云歌曲 ID，如 1809646618" style="flex:1;margin-bottom:0">
+            <button class="btn btn-hi" onclick="addMusic()">＋ 添加</button>
+          </div>
+          <div id="musicList"><div class="empty">加载中…</div></div>
+          <div class="row"><button class="btn btn-hi" onclick="saveMusic()">保存歌单</button></div>
+        </div>
+      </section>
+
+      <div id="status"></div>
+    </main>
+  </div>
 </div>
 
 <script src="/admin.js"></script>
