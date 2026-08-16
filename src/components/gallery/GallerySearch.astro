@@ -1,0 +1,49 @@
+---
+/**
+ * GallerySearch · 画廊搜索（最小 client Island）
+ *
+ * 实时前端过滤：匹配相册标题/描述，隐藏不匹配的卡片。
+ */
+---
+
+<div class="gallery-search">
+	<input type="search" id="gallery-search-input" placeholder="搜索相册或描述…" aria-label="搜索相册或描述" />
+</div>
+
+<style>
+	.gallery-search input {
+		width: 240px;
+		padding: 10px 16px;
+		border-radius: 999px;
+		border: 1px solid rgba(167, 139, 250, 0.35);
+		background: rgba(23, 15, 45, 0.6);
+		color: #e8e4ff;
+		font-size: 13px;
+		outline: none;
+		transition: border-color 0.2s, box-shadow 0.2s;
+	}
+	.gallery-search input::placeholder {
+		color: rgba(216, 210, 255, 0.45);
+	}
+	.gallery-search input:focus {
+		border-color: rgba(167, 139, 250, 0.9);
+		box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.25);
+	}
+	@media (max-width: 720px) {
+		.gallery-search input {
+			width: 100%;
+		}
+	}
+</style>
+
+<script>
+	const input = document.getElementById('gallery-search-input');
+	input.addEventListener('input', () => {
+		const q = input.value.trim().toLowerCase();
+		document.querySelectorAll('[data-album-card]').forEach((el) => {
+			const title = (el.dataset.title || '').toLowerCase();
+			const desc = (el.dataset.desc || '').toLowerCase();
+			el.style.display = !q || title.includes(q) || desc.includes(q) ? '' : 'none';
+		});
+	});
+</script>

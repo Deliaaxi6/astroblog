@@ -1,0 +1,202 @@
+---
+/**
+ * 光影画廊 · 相册管理首页（admin/Gallery）
+ *
+ * 深色紫黑渐变 + 粒子星光（GalleryParticles island）
+ * 堆叠斜叠相册卡片（静态渲染，纯 CSS rotate/z-index）
+ * 搜索过滤（GallerySearch island）+ 新建相册弹窗（CreateAlbumModal island）
+ */
+import { getCollection } from 'astro:content';
+import { Image } from 'astro:assets';
+import '../../styles/global.css';
+import GalleryParticles from '../../components/gallery/GalleryParticles.astro';
+import GallerySearch from '../../components/gallery/GallerySearch.astro';
+import CreateAlbumModal from '../../components/gallery/CreateAlbumModal.astro';
+
+const albums = (await getCollection('albums')).sort((a, b) =>
+	String(b.data.createdAt).localeCompare(String(a.data.createdAt)),
+);
+---
+
+<!DOCTYPE html>
+<html lang="zh-CN">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<title>光影画廊</title>
+	</head>
+	<body class="gallery-body">
+		<GalleryParticles />
+
+		<header class="gallery-head">
+			<div class="gallery-heading">
+				<h1 class="gallery-title">光影画廊</h1>
+				<p class="gallery-sub">定格时间，封存泰拉与现实的每一次心跳</p>
+			</div>
+			<GallerySearch />
+		</header>
+
+		<main class="gallery-grid">
+			<CreateAlbumModal />
+
+			{
+				albums.map((album, i) => (
+					<a
+						class:list={['album-card', i % 2 === 1 && 'album-card-tilt']}
+						href={`/admin/gallery/${album.data.id}`}
+						data-album-card
+						data-title={album.data.title}
+						data-desc={album.data.description ?? ''}
+					>
+						<span class="album-stack">
+							<Image
+								src={album.data.cover}
+								alt={album.data.title}
+								class="album-cover"
+								loading="lazy"
+								format="webp"
+							/>
+						</span>
+						<span class="album-name">{album.data.title}</span>
+					</a>
+				))
+			}
+		</main>
+	</body>
+</html>
+
+<style is:global>
+	.gallery-body {
+		min-height: 100vh;
+		margin: 0;
+		background: linear-gradient(165deg, #0b0716 0%, #1a1033 46%, #0d0819 100%);
+		background-attachment: fixed;
+		color: #e8e4ff;
+		font-family: system-ui, -apple-system, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+	}
+
+	.gallery-head {
+		position: relative;
+		z-index: 1;
+		display: flex;
+		align-items: flex-end;
+		justify-content: space-between;
+		gap: 24px;
+		padding: 56px 48px 8px;
+	}
+	.gallery-title {
+		margin: 0;
+		font-size: 40px;
+		letter-spacing: 6px;
+		background: linear-gradient(120deg, #fff 10%, #c4b5fd 55%, #8b5cf6 90%);
+		-webkit-background-clip: text;
+		background-clip: text;
+		color: transparent;
+	}
+	.gallery-sub {
+		margin: 10px 0 0;
+		font-size: 14px;
+		color: rgba(216, 210, 255, 0.55);
+		letter-spacing: 1px;
+	}
+
+	.gallery-grid {
+		position: relative;
+		z-index: 1;
+		display: grid;
+		grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+		gap: 26px;
+		padding: 40px 48px 64px;
+	}
+
+	.album-card {
+		display: flex;
+		flex-direction: column;
+		gap: 12px;
+		padding: 14px 14px 16px;
+		border-radius: 16px;
+		background: rgba(255, 255, 255, 0.035);
+		border: 1px solid rgba(167, 139, 250, 0.14);
+		text-decoration: none;
+		transition: transform 0.25s, box-shadow 0.25s, background 0.25s;
+	}
+	.album-card:hover {
+		transform: translateY(-4px);
+		box-shadow: 0 18px 46px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(167, 139, 250, 0.3);
+		background: rgba(255, 255, 255, 0.055);
+	}
+
+	.album-stack {
+		position: relative;
+		display: block;
+	}
+	.album-stack::before,
+	.album-stack::after {
+		content: '';
+		position: absolute;
+		inset: 0;
+		border-radius: 12px;
+		border: 1px solid rgba(167, 139, 250, 0.2);
+		background: linear-gradient(135deg, rgba(167, 139, 250, 0.12), rgba(88, 28, 135, 0.16));
+		box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+		transition: transform 0.25s;
+	}
+	.album-stack::before {
+		transform: rotate(-2.6deg) translate(-7px, 4px);
+		z-index: 0;
+	}
+	.album-stack::after {
+		transform: rotate(2.4deg) translate(7px, 2px);
+		z-index: 0;
+	}
+	.album-card-tilt .album-stack::before {
+		transform: rotate(2.6deg) translate(7px, 4px);
+	}
+	.album-card-tilt .album-stack::after {
+		transform: rotate(-2.4deg) translate(-7px, 2px);
+	}
+	.album-cover {
+		position: relative;
+		z-index: 1;
+		display: block;
+		width: 100%;
+		aspect-ratio: 4 / 3;
+		object-fit: cover;
+		border-radius: 12px;
+		box-shadow: 0 18px 40px rgba(0, 0, 0, 0.55);
+		transform: rotate(-0.6deg);
+		transition: transform 0.25s;
+	}
+	.album-card-tilt .album-cover {
+		transform: rotate(0.6deg);
+	}
+	.album-card:hover .album-cover {
+		transform: rotate(0deg) scale(1.015);
+	}
+	.album-name {
+		display: block;
+		font-size: 14px;
+		letter-spacing: 1px;
+		color: #d9d3ff;
+		text-align: center;
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
+	}
+
+	@media (max-width: 720px) {
+		.gallery-head {
+			flex-direction: column;
+			align-items: stretch;
+			padding: 40px 20px 4px;
+		}
+		.gallery-title {
+			font-size: 30px;
+		}
+		.gallery-grid {
+			grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+			padding: 28px 20px 48px;
+			gap: 20px;
+		}
+	}
+</style>

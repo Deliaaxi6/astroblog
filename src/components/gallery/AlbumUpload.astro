@@ -1,0 +1,109 @@
+---
+/**
+ * AlbumUpload · 相册批量上传（最小 client Island）
+ *
+ * 多选图片 → POST 本地 CMS /api/gallery/albums/{id}/photos
+ * → 触发博客重建 → 提示完成后刷新。
+ */
+const { albumId } = Astro.props;
+---
+
+<div class="album-upload" data-album-id={albumId}>
+	<input type="file" id="album-files" multiple accept="image/*" hidden />
+	<button type="button" class="upload-btn" id="album-pick-btn">＋ 批量上传照片</button>
+	<p class="upload-msg" id="album-upload-msg"></p>
+</div>
+
+<style>
+	.album-upload {
+		display: flex;
+		align-items: center;
+		gap: 14px;
+		flex-wrap: wrap;
+	}
+	.upload-btn {
+		padding: 10px 20px;
+		border-radius: 999px;
+		border: 1px solid rgba(167, 139, 250, 0.45);
+		background: rgba(139, 92, 246, 0.16);
+		color: #e2dcff;
+		font-size: 13px;
+		cursor: pointer;
+		transition: border-color 0.2s, box-shadow 0.2s;
+	}
+	.upload-btn:hover {
+		border-color: rgba(167, 139, 250, 0.95);
+		box-shadow: 0 0 18px rgba(139, 92, 246, 0.35);
+	}
+	.upload-btn:disabled {
+		opacity: 0.55;
+		cursor: not-allowed;
+	}
+	.upload-msg {
+		margin: 0;
+		font-size: 12px;
+		color: rgba(216, 210, 255, 0.6);
+	}
+</style>
+
+<script>
+	const CMS_BASE = 'http://localhost:8080';
+	const root = document.querySelector('.album-upload');
+	const albumId = root.dataset.albumId;
+	const pickBtn = document.getElementById('album-pick-btn');
+	const fileInput = document.getElementById('album-files');
+	const msg = document.getElementById('album-upload-msg');
+
+	const waitBuild = () =>
+		new Promise((resolve) => {
+			const check = async () => {
+				try {
+					const r = await fetch(CMS_BASE + '/api/sync/status', {
+						method: 'POST',
+						headers: { 'Content-Type': 'application/json' },
+						body: '{}',
+					});
+					const j = await r.json();
+					if (j.status && !j.status.running) return resolve(j.status.last_exit);
+				} catch (e) {
+					/* 轮询继续 */
+				}
+				setTimeout(check, 1500);
+			};
+			check();
+		});
+
+	pickBtn.addEventListener('click', () => fileInput.click());
+	fileInput.addEventListener('change', async () => {
+		const files = [...fileInput.files];
+		if (!files.length) return;
+		pickBtn.disabled = true;
+		pickBtn.textContent = '上传中…';
+		msg.textContent = `正在上传 ${files.length} 张…`;
+		try {
+			const fd = new FormData();
+			files.forEach((f) => fd.append('files', f));
+			const r = await fetch(`${CMS_BASE}/api/gallery/albums/${albumId}/photos`, {
+				method: 'POST',
+				body: fd,
+			});
+			const j = await r.json();
+			if (!j.success) throw new Error(j.message || '上传失败');
+			msg.textContent = j.message + '，正在重建站点…';
+			await fetch(CMS_BASE + '/api/sync/rebuild', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: '{}',
+			});
+			const exit = await waitBuild();
+			if (exit === 0) location.reload();
+			else msg.textContent = j.message + '，但站点重建失败，请稍后手动刷新。';
+			fileInput.value = '';
+		} catch (err) {
+			msg.textContent = err.message;
+		} finally {
+			pickBtn.disabled = false;
+			pickBtn.textContent = '＋ 批量上传照片';
+		}
+	});
+</script>

@@ -1,0 +1,88 @@
+---
+/**
+ * GalleryParticles · 光影画廊背景粒子（Canvas，独立 Island）
+ *
+ * 深紫黑背景上叠加微弱闪烁粒子星光；pointer-events: none，
+ * 不干扰卡片交互。prefers-reduced-motion 时绘制静态粒子。
+ */
+---
+
+<canvas id="gallery-particles" aria-hidden="true"></canvas>
+
+<style>
+	#gallery-particles {
+		position: fixed;
+		inset: 0;
+		z-index: 0;
+		pointer-events: none;
+	}
+</style>
+
+<script>
+	const canvas = document.getElementById('gallery-particles');
+	if (canvas) {
+		const ctx = canvas.getContext('2d');
+		const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+		let particles = [];
+		let w = 0;
+		let h = 0;
+
+		const resize = () => {
+			w = canvas.width = window.innerWidth * devicePixelRatio;
+			h = canvas.height = window.innerHeight * devicePixelRatio;
+			canvas.style.width = window.innerWidth + 'px';
+			canvas.style.height = window.innerHeight + 'px';
+		};
+		resize();
+		window.addEventListener('resize', resize);
+
+		const rand = (a, b) => a + Math.random() * (b - a);
+
+		const make = () => ({
+			x: rand(0, w),
+			y: rand(0, h),
+			r: rand(0.4, 1.6) * devicePixelRatio,
+			vx: rand(-0.12, 0.12) * devicePixelRatio,
+			vy: rand(-0.06, 0.06) * devicePixelRatio,
+			tw: rand(0.4, 1),
+			phase: rand(0, Math.PI * 2),
+			speed: rand(0.5, 1.8),
+		});
+
+		const count = Math.min(90, Math.floor((w * h) / 22000));
+		particles = Array.from({ length: count }, make);
+
+		const draw = (t) => {
+			ctx.clearRect(0, 0, w, h);
+			for (const p of particles) {
+				const a = p.tw * (0.35 + 0.65 * (0.5 + 0.5 * Math.sin(t * 0.001 * p.speed + p.phase)));
+				ctx.beginPath();
+				ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+				ctx.fillStyle = `rgba(216, 210, 255, ${a.toFixed(3)})`;
+				ctx.fill();
+			}
+		};
+
+		if (reduced) {
+			draw(0);
+		} else {
+			let last = 0;
+			const loop = (t) => {
+				if (t - last > 16) {
+					last = t;
+					for (const p of particles) {
+						p.x += p.vx;
+						p.y += p.vy;
+						if (p.x < -10) p.x = w + 10;
+						if (p.x > w + 10) p.x = -10;
+						if (p.y < -10) p.y = h + 10;
+						if (p.y > h + 10) p.y = -10;
+					}
+					draw(t);
+				}
+				requestAnimationFrame(loop);
+			};
+			requestAnimationFrame(loop);
+		}
+	}
+</script>
