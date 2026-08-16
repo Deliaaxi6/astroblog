@@ -1,10 +1,9 @@
-/* AstroBlog CMS 管理台逻辑 */
+/* 纸上拾光 管理台 · 交互逻辑（档案手账版） */
 var statusEl = document.getElementById('status');
 
 function setStatus(msg, cls) {
-  statusEl.className = cls || 'info';
+  statusEl.className = 'show ' + (cls || 'info');
   statusEl.textContent = msg;
-  statusEl.style.display = 'block';
 }
 
 function api(path, payload) {
@@ -107,7 +106,7 @@ tabs.forEach(function (btn) {
     btn.classList.add('active');
     document.querySelectorAll('.panel').forEach(function (p) { p.classList.remove('show'); });
     document.getElementById('panel-' + btn.dataset.tab).classList.add('show');
-    statusEl.style.display = 'none';
+    statusEl.className = '';
     if (btn.dataset.tab === 'posts' && !postListLoaded) loadPosts();
     if (btn.dataset.tab === 'moments' && !momentListLoaded) loadMoments();
     if (btn.dataset.tab === 'friends') loadDataTab('friends');
@@ -144,8 +143,8 @@ function renderMusicList() {
     return '<div class="list-item">' +
       '<img class="music-cover" src="' + esc(s.cover) + '" alt="">' +
       '<div class="list-main"><h4>' + esc(s.name) + '</h4>' +
-      '<p>' + esc(s.artist) + ' <span class="badge date">' + esc(s.id) + '</span></p></div>' +
-      '<div class="list-actions"><button class="btn btn-danger btn-sm" onclick="removeMusic(' + i + ')">移除</button></div>' +
+      '<p><span class="badge mute">' + esc(s.id) + '</span>' + esc(s.artist) + '</p></div>' +
+      '<div class="list-actions"><button class="btn btn-seal btn-sm" onclick="removeMusic(' + i + ')">移除</button></div>' +
       '</div>';
   }).join('');
 }
@@ -189,13 +188,13 @@ function loadPosts() {
     if (!d.success) { box.innerHTML = '<div class="empty">' + esc(d.message) + '</div>'; return; }
     if (!d.posts.length) { box.innerHTML = '<div class="empty">暂无文章，点击右上角新建</div>'; return; }
     box.innerHTML = d.posts.map(function (p) {
-      var tags = (p.tags || []).map(function (t) { return '<span class="badge">' + esc(t) + '</span>'; }).join('');
+      var tags = (p.tags || []).map(function (t) { return '<span class="badge hi">' + esc(t) + '</span>'; }).join('');
       return '<div class="list-item">' +
-        '<div class="list-main"><h4>' + (p.draft ? '<span class="badge draft">草稿</span>' : '') + esc(p.title) + '</h4>' +
-        '<p><span class="badge date">' + esc(p.pubDate) + '</span>' + tags + esc(p.id) + ' · ' + p.wordCount + ' 字</p></div>' +
+        '<div class="list-main"><h4>' + (p.draft ? '<span class="draft-mark">● 草稿</span>' : '') + esc(p.title) + '</h4>' +
+        '<p><span class="badge mute">' + esc(p.pubDate) + '</span>' + tags + esc(p.id) + ' · ' + p.wordCount + ' 字</p></div>' +
         '<div class="list-actions">' +
         '<button class="btn btn-ghost btn-sm" onclick="editPost(\'' + esc(p.id) + '\')">编辑</button>' +
-        '<button class="btn btn-danger btn-sm" onclick="deletePost(\'' + esc(p.id) + '\')">删除</button>' +
+        '<button class="btn btn-seal btn-sm" onclick="deletePost(\'' + esc(p.id) + '\')">删除</button>' +
         '</div></div>';
     }).join('');
   }).catch(function () { document.getElementById('postList').innerHTML = '<div class="empty">后端未运行</div>'; });
@@ -230,8 +229,8 @@ function editPost(id) {
       '<textarea id="f_content" rows="16">' + esc(fm.content || '') + '</textarea>' +
       '<div id="f_preview" class="md-preview" style="display:none"></div></div>' +
       '<div class="row">' +
-      '<button class="btn btn-primary" onclick="savePost()">保存</button>' +
-      (id !== 'new' ? '<button class="btn btn-danger" onclick="deletePost(editingPostId)">删除</button>' : '') +
+      '<button class="btn btn-hi" onclick="savePost()">保存</button>' +
+      (id !== 'new' ? '<button class="btn btn-seal" onclick="deletePost(editingPostId)">删除</button>' : '') +
       '<button class="btn btn-ghost" onclick="backToPosts()">取消</button>' +
       '</div>';
     bindMdPreview(box);
@@ -291,12 +290,12 @@ function loadMoments() {
       var imgs = (m.images || []).length;
       return '<div class="list-item">' +
         '<div class="list-main"><h4>' + esc(m.content.slice(0, 60)) + (m.content.length > 60 ? '…' : '') + '</h4>' +
-        '<p><span class="badge date">' + esc(m.date) + '</span>' +
-        (m.location ? '<span class="badge">📍 ' + esc(m.location) + '</span>' : '') +
+        '<p><span class="badge mute">' + esc(m.date) + '</span>' +
+        (m.location ? '<span class="badge seal">📍 ' + esc(m.location) + '</span>' : '') +
         (imgs ? '<span class="badge">' + imgs + ' 张图</span>' : '') + esc(m.id) + '</p></div>' +
         '<div class="list-actions">' +
         '<button class="btn btn-ghost btn-sm" onclick="editMoment(\'' + esc(m.id) + '\')">编辑</button>' +
-        '<button class="btn btn-danger btn-sm" onclick="deleteMoment(\'' + esc(m.id) + '\')">删除</button>' +
+        '<button class="btn btn-seal btn-sm" onclick="deleteMoment(\'' + esc(m.id) + '\')">删除</button>' +
         '</div></div>';
     }).join('');
   }).catch(function () { document.getElementById('momentList').innerHTML = '<div class="empty">后端未运行</div>'; });
@@ -324,8 +323,8 @@ function editMoment(id) {
       '<div class="field"><label>图片 URL（每行一个）</label><textarea id="m_images" rows="4" class="code">' + esc(imgs) + '</textarea></div>' +
       '<div class="field"><label>内容</label><textarea id="m_content" rows="6">' + esc(fm.content || '') + '</textarea></div>' +
       '<div class="row">' +
-      '<button class="btn btn-primary" onclick="saveMoment()">保存</button>' +
-      (id !== 'new' ? '<button class="btn btn-danger" onclick="deleteMoment(editingMomentId)">删除</button>' : '') +
+      '<button class="btn btn-hi" onclick="saveMoment()">保存</button>' +
+      (id !== 'new' ? '<button class="btn btn-seal" onclick="deleteMoment(editingMomentId)">删除</button>' : '') +
       '<button class="btn btn-ghost" onclick="backToMoments()">取消</button>' +
       '</div>';
   };
