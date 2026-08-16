@@ -1,4 +1,4 @@
-/* 纸上拾光 管理台 · 交互逻辑（档案手账版） */
+/* 纸上拾光 管理台 · 交互逻辑（档案柜版） */
 var statusEl = document.getElementById('status');
 
 function setStatus(msg, cls) {
@@ -77,44 +77,78 @@ function renderMd(src) {
   return out.join('');
 }
 
-function bindMdPreview(box) {
-  var writeTab = box.querySelector('#mdTabWrite');
-  var previewTab = box.querySelector('#mdTabPreview');
-  var ta = box.querySelector('#f_content');
-  var pv = box.querySelector('#f_preview');
-  if (!writeTab || !previewTab || !ta || !pv) return;
-  writeTab.addEventListener('click', function () {
-    writeTab.classList.add('active');
-    previewTab.classList.remove('active');
-    ta.style.display = 'block';
-    pv.style.display = 'none';
-  });
-  previewTab.addEventListener('click', function () {
-    previewTab.classList.add('active');
-    writeTab.classList.remove('active');
-    pv.innerHTML = renderMd(ta.value);
-    ta.style.display = 'none';
-    pv.style.display = 'block';
-  });
+/* ============ 档案柜导航 ============ */
+var tabs = document.querySelectorAll('#drawer button');
+
+function goTab(name) {
+  tabs.forEach(function (b) { b.classList.remove('active'); });
+  var target = Array.prototype.filter.call(tabs, function (b) { return b.dataset.tab === name; })[0];
+  if (target) target.classList.add('active');
+  document.querySelectorAll('.panel').forEach(function (p) { p.classList.remove('show'); });
+  document.getElementById('panel-' + name).classList.add('show');
+  statusEl.className = '';
+  if (name === 'posts' && !postListLoaded) loadPosts();
+  if (name === 'moments' && !momentListLoaded) loadMoments();
+  if (name === 'friends') loadDataTab('friends');
+  if (name === 'projects') loadDataTab('projects');
+  if (name === 'albums') loadDataTab('albums');
+  if (name === 'music' && !musicListLoaded) loadMusicTab();
+  if (name === 'dash' && !dashLoaded) loadDash();
 }
 
-/* ============ Tab 切换 ============ */
-var tabs = document.querySelectorAll('#tabs button');
 tabs.forEach(function (btn) {
-  btn.addEventListener('click', function () {
-    tabs.forEach(function (b) { b.classList.remove('active'); });
-    btn.classList.add('active');
-    document.querySelectorAll('.panel').forEach(function (p) { p.classList.remove('show'); });
-    document.getElementById('panel-' + btn.dataset.tab).classList.add('show');
-    statusEl.className = '';
-    if (btn.dataset.tab === 'posts' && !postListLoaded) loadPosts();
-    if (btn.dataset.tab === 'moments' && !momentListLoaded) loadMoments();
-    if (btn.dataset.tab === 'friends') loadDataTab('friends');
-    if (btn.dataset.tab === 'projects') loadDataTab('projects');
-    if (btn.dataset.tab === 'albums') loadDataTab('albums');
-    if (btn.dataset.tab === 'music' && !musicListLoaded) loadMusicTab();
-  });
+  btn.addEventListener('click', function () { goTab(btn.dataset.tab); });
 });
+
+/* ============ 档案总览（Dashboard） ============ */
+var dashLoaded = false;
+
+function loadDash() {
+  dashLoaded = true;
+  var grid = document.getElementById('statGrid');
+  var rec = document.getElementById('recentPosts');
+  rec.innerHTML = '<div class="empty">读取中…</div>';
+  Promise.all([
+    api('/api/posts/list').catch(function () { return {}; }),
+    api('/api/moments/list').catch(function () { return {}; }),
+    getApi('/api/site-data/all').catch(function () { return {}; }),
+    getApi('/api/music/playlist').catch(function () { return {}; })
+  ]).then(function (rs) {
+    var posts = rs[0].posts || [];
+    var moments = rs[1].moments || [];
+    var data = rs[2].data || {};
+    var songIds = rs[3].ids || [];
+    var drafts = posts.filter(function (p) { return p.draft; }).length;
+    var tagSet = {};
+    posts.forEach(function (p) { (p.tags || []).forEach(function (t) { tagSet[t] = 1; }); });
+    var vals = {
+      '文章': posts.length, '说说': moments.length, '友链': (data.friends || []).length,
+      '项目': (data.projects || []).length, '相册': (data.albums || []).length,
+      '歌单': songIds.length, '草稿': drafts, '标签': Object.keys(tagSet).length
+    };
+    var i = 0;
+    grid.querySelectorAll('.stat').forEach(function (s) {
+      var num = s.querySelector('.num');
+      var lbl = s.querySelector('.lbl');
+      var key = lbl.textContent.replace('· ', '').trim();
+      if (key in vals) num.textContent = vals[key];
+      i++;
+    });
+    if (!posts.length) {
+      rec.innerHTML = '<div class="empty">还没有文章。<br><b onclick="goTab(\'posts\');newPost()">写第一篇 →</b></div>';
+      return;
+    }
+    var recent = posts.slice(0, 5).map(function (p, i) {
+      return '<div class="list-item">' +
+        '<div class="list-idx">' + String(i + 1).padStart(2, '0') + '</div>' +
+        '<div class="list-main"><h4>' + (p.draft ? '<span class="draft-mark">● 草稿</span>' : '') + esc(p.title) + '</h4>' +
+        '<p><span class="badge mute">' + esc(p.pubDate) + '</span>' + esc(p.id) + '</p></div>' +
+        '<div class="list-actions"><button class="btn btn-ghost btn-sm" onclick="goTab(\'posts\');editPost(\'' + esc(p.id) + '\')">编辑</button></div>' +
+        '</div>';
+    }).join('');
+    rec.innerHTML = recent;
+  });
+}
 
 /* ============ 音乐歌单 ============ */
 var musicListLoaded = false;
@@ -126,7 +160,11 @@ function loadMusicTab(force) {
   box.innerHTML = '<div class="empty">加载中…</div>';
   getApi('/api/music/playlist').then(function (d) {
     if (!d.success) { box.innerHTML = '<div class="empty">' + esc(d.message) + '</div>'; return; }
-    if (!d.ids.length) { musicCache = []; box.innerHTML = '<div class="empty">歌单为空，添加一首歌曲吧</div>'; return; }
+    if (!d.ids.length) {
+      musicCache = [];
+      box.innerHTML = '<div class="empty">歌单为空。<br><b onclick="document.getElementById(\'musicIdInput\').focus()">输入歌曲 ID 添加 →</b></div>';
+      return;
+    }
     getApi('/api/music?ids=' + d.ids.join(',')).then(function (list) {
       musicCache = (list || []).map(function (s) {
         return { id: s.id, name: s.name || '未知歌曲', artist: s.artist || '', cover: s.cover || '' };
@@ -141,6 +179,7 @@ function renderMusicList() {
   if (!musicCache.length) { box.innerHTML = '<div class="empty">歌单为空</div>'; return; }
   box.innerHTML = musicCache.map(function (s, i) {
     return '<div class="list-item">' +
+      '<div class="list-idx">' + String(i + 1).padStart(2, '0') + '</div>' +
       '<img class="music-cover" src="' + esc(s.cover) + '" alt="">' +
       '<div class="list-main"><h4>' + esc(s.name) + '</h4>' +
       '<p><span class="badge mute">' + esc(s.id) + '</span>' + esc(s.artist) + '</p></div>' +
@@ -186,10 +225,14 @@ function loadPosts() {
   api('/api/posts/list').then(function (d) {
     var box = document.getElementById('postList');
     if (!d.success) { box.innerHTML = '<div class="empty">' + esc(d.message) + '</div>'; return; }
-    if (!d.posts.length) { box.innerHTML = '<div class="empty">暂无文章，点击右上角新建</div>'; return; }
-    box.innerHTML = d.posts.map(function (p) {
+    if (!d.posts.length) {
+      box.innerHTML = '<div class="empty">还没有文章。<br><b onclick="newPost()">写第一篇 →</b></div>';
+      return;
+    }
+    box.innerHTML = d.posts.map(function (p, i) {
       var tags = (p.tags || []).map(function (t) { return '<span class="badge hi">' + esc(t) + '</span>'; }).join('');
       return '<div class="list-item">' +
+        '<div class="list-idx">' + String(i + 1).padStart(2, '0') + '</div>' +
         '<div class="list-main"><h4>' + (p.draft ? '<span class="draft-mark">● 草稿</span>' : '') + esc(p.title) + '</h4>' +
         '<p><span class="badge mute">' + esc(p.pubDate) + '</span>' + tags + esc(p.id) + ' · ' + p.wordCount + ' 字</p></div>' +
         '<div class="list-actions">' +
@@ -202,11 +245,21 @@ function loadPosts() {
 
 function newPost() { editPost('new'); }
 
+function bindLivePreview(box) {
+  var ta = box.querySelector('#f_content');
+  var pv = box.querySelector('#f_preview');
+  if (!ta || !pv) return;
+  var t = null;
+  var render = function () { pv.innerHTML = renderMd(ta.value); };
+  ta.addEventListener('input', function () { clearTimeout(t); t = setTimeout(render, 250); });
+  render();
+}
+
 function editPost(id) {
   editingPostId = id;
   document.getElementById('postListCard').style.display = 'none';
   document.getElementById('postEditorCard').style.display = 'block';
-  document.getElementById('postEditorTitle').textContent = id === 'new' ? '新建文章' : '编辑文章';
+  document.getElementById('postEditorTitle').textContent = id === 'new' ? '写新文章' : '编辑文章';
   var box = document.getElementById('postEditor');
   box.innerHTML = '<div class="empty">加载中…</div>';
   var fill = function (fm) {
@@ -223,17 +276,19 @@ function editPost(id) {
       '<div class="field"><label>描述</label><input id="f_desc" value="' + esc(fm.description || '') + '"></div>' +
       '<div class="field"><label>封面图 URL</label><input id="f_cover" value="' + esc(fm.cover || '') + '"></div>' +
       '<div class="field field-check"><input type="checkbox" id="f_draft" ' + (fm.draft ? 'checked' : '') + '><label for="f_draft">草稿（不发布）</label></div>' +
-      '<div class="field"><label>正文（Markdown）</label>' +
-      '<div class="md-tabs"><button type="button" class="btn btn-ghost btn-sm active" id="mdTabWrite">✏️ 编辑</button>' +
-      '<button type="button" class="btn btn-ghost btn-sm" id="mdTabPreview">👁️ 预览</button></div>' +
-      '<textarea id="f_content" rows="16">' + esc(fm.content || '') + '</textarea>' +
-      '<div id="f_preview" class="md-preview" style="display:none"></div></div>' +
+      '<div class="field"><label>正文（Markdown，左侧书写右侧实时预览）</label></div>' +
+      '<div class="pane">' +
+      '<div class="pane-col"><div class="pane-cap">WRITE / 草稿纸</div>' +
+      '<textarea id="f_content" rows="16">' + esc(fm.content || '') + '</textarea></div>' +
+      '<div class="pane-col"><div class="pane-cap">PREVIEW / 成品页</div>' +
+      '<div id="f_preview" class="md-preview">渲染中…</div></div>' +
+      '</div>' +
       '<div class="row">' +
-      '<button class="btn btn-hi" onclick="savePost()">保存</button>' +
+      '<button class="btn btn-hi" onclick="savePost()">保存更改</button>' +
       (id !== 'new' ? '<button class="btn btn-seal" onclick="deletePost(editingPostId)">删除</button>' : '') +
       '<button class="btn btn-ghost" onclick="backToPosts()">取消</button>' +
       '</div>';
-    bindMdPreview(box);
+    bindLivePreview(box);
   };
   if (id === 'new') { fill({}); return; }
   api('/api/posts/get', { id: id }).then(function (d) {
@@ -285,10 +340,14 @@ function loadMoments() {
   api('/api/moments/list').then(function (d) {
     var box = document.getElementById('momentList');
     if (!d.success) { box.innerHTML = '<div class="empty">' + esc(d.message) + '</div>'; return; }
-    if (!d.moments.length) { box.innerHTML = '<div class="empty">暂无说说，点击右上角新建</div>'; return; }
-    box.innerHTML = d.moments.map(function (m) {
+    if (!d.moments.length) {
+      box.innerHTML = '<div class="empty">还没有说说。<br><b onclick="newMoment()">写第一条 →</b></div>';
+      return;
+    }
+    box.innerHTML = d.moments.map(function (m, i) {
       var imgs = (m.images || []).length;
       return '<div class="list-item">' +
+        '<div class="list-idx">' + String(i + 1).padStart(2, '0') + '</div>' +
         '<div class="list-main"><h4>' + esc(m.content.slice(0, 60)) + (m.content.length > 60 ? '…' : '') + '</h4>' +
         '<p><span class="badge mute">' + esc(m.date) + '</span>' +
         (m.location ? '<span class="badge seal">📍 ' + esc(m.location) + '</span>' : '') +
@@ -307,7 +366,7 @@ function editMoment(id) {
   editingMomentId = id;
   document.getElementById('momentListCard').style.display = 'none';
   document.getElementById('momentEditorCard').style.display = 'block';
-  document.getElementById('momentEditorTitle').textContent = id === 'new' ? '新建说说' : '编辑说说';
+  document.getElementById('momentEditorTitle').textContent = id === 'new' ? '写新说说' : '编辑说说';
   var box = document.getElementById('momentEditor');
   box.innerHTML = '<div class="empty">加载中…</div>';
   var fill = function (fm) {
@@ -323,7 +382,7 @@ function editMoment(id) {
       '<div class="field"><label>图片 URL（每行一个）</label><textarea id="m_images" rows="4" class="code">' + esc(imgs) + '</textarea></div>' +
       '<div class="field"><label>内容</label><textarea id="m_content" rows="6">' + esc(fm.content || '') + '</textarea></div>' +
       '<div class="row">' +
-      '<button class="btn btn-hi" onclick="saveMoment()">保存</button>' +
+      '<button class="btn btn-hi" onclick="saveMoment()">保存更改</button>' +
       (id !== 'new' ? '<button class="btn btn-seal" onclick="deleteMoment(editingMomentId)">删除</button>' : '') +
       '<button class="btn btn-ghost" onclick="backToMoments()">取消</button>' +
       '</div>';
@@ -449,5 +508,5 @@ document.getElementById('copyBtn').addEventListener('click', function () {
   setStatus('链接已复制到剪贴板 ✓', 'ok');
 });
 
-/* 初始加载 */
-loadPosts();
+/* 初始加载：档案总览 */
+loadDash();
