@@ -231,8 +231,9 @@ const lead = posts[0] ?? null;
 			background-image: url('/06637e3637aa50466b3ed9b74ad08aed.jpg');
 			background-size: cover;
 			background-position: center;
-			animation: heroBgShow 4s ease-out both;
+			animation: heroBgShow 4s ease-out backwards;
 			overflow: hidden;
+			will-change: opacity, transform;
 		}
 		.hero-overlay {
 			position: absolute;
@@ -810,6 +811,26 @@ const lead = posts[0] ?? null;
 			var top = next.getBoundingClientRect().top + window.scrollY - 20;
 			window.scrollTo({ top: top, behavior: 'smooth' });
 		});
+
+		/* ============ 滚动时 hero 背景渐隐 + 视差 ============ */
+		(function () {
+			var hero = document.querySelector('.hero');
+			if (!hero) return;
+			var reduce =
+				window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+			function onScroll() {
+				var y = window.scrollY;
+				var h = hero.offsetHeight || 1;
+				var p = Math.min(1, y / (h * 0.8));
+				hero.style.opacity = String(1 - p);
+				hero.style.transform = 'translateY(' + -y * 0.3 + 'px)';
+			}
+			if (reduce) return;
+			setTimeout(function () {
+				window.addEventListener('scroll', onScroll, { passive: true });
+				onScroll();
+			}, 4200);
+		})();
 
 		/* ============ Toast ============ */
 		var toastTimer;
