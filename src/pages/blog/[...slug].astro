@@ -37,6 +37,7 @@ const articleLd = JSON.stringify({
 ---
 
 <Layout title={post.data.title} description={post.data.description} cover={post.data.cover}>
+	{post.data.cover && <link slot="head" rel="preload" as="image" href={new URL(post.data.cover, site).href} />}
 	<script slot="head" type="application/ld+json" set:html={articleLd} />
 	<a href="/blog" class="back-link">← 返回文章列表</a>
 	<article class="glass post-layout">

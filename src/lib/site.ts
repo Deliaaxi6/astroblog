@@ -8,7 +8,6 @@ export const site = {
 链接：https://your-domain.com
 头像：https://your-domain.com/favicon.svg
 简介：用 Astro 构建的个人博客，记录技术、生活与思考。`,
-	cloudMusicIds: ['1809646618', '3361076230', '1859390262'],
 	gitalk: {
 		clientID: 'Ov23lizsjQ5HuKixIBhG',
 		clientSecret: '[REDACTED]',

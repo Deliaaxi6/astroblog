@@ -533,7 +533,7 @@ const buildStamp = '2026-08-14T00:00:00';
 		function initMusic() {
 			var ids = (window.musicIds || []).filter(Boolean);
 			if (!ids.length) {
-				document.getElementById('playerLyric').textContent = '音乐未配置（site.ts cloudMusicIds）';
+				document.getElementById('playerLyric').textContent = '音乐未配置（管理台歌单为空）';
 				return;
 			}
 			document.getElementById('playerLyric').textContent = '正在连接云端...';
