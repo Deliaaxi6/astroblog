@@ -29,3 +29,6 @@ cms/uvicorn.log
 cms/uvicorn.err.log
 __pycache__/
 *.pyc
+
+# cms runtime data
+manager_data/

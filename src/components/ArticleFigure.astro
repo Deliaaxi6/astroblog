@@ -1,0 +1,116 @@
+---
+/**
+ * ArticleFigure · 文章插图组件
+ *
+ * 纯 Astro + TailwindCSS 实现：无背景装饰（透明容器），仅保留干净图片 +
+ * 可选图注 + 灯箱。对标纯 UML 图嵌入效果。
+ *
+ * 使用方式：
+ *   ① MDX 组件式（图片建议 import 以启用 Astro 优化）：
+ *      import uml from './uml-order-state.png';
+ *      <ArticleFigure src={uml} alt="旅店预订UML状态图" caption="图1 预订订单对象状态建模" />
+ *      （src 也支持 public 路径 /images/xxx.png 与外链 URL）
+ *   ② markdown 语法（rehype 插件自动转换，title 即图注）：
+ *      ![旅店预订UML状态图](./uml-order-state.png "图1 预订订单对象状态建模")
+ */
+
+import { Image } from 'astro:assets';
+import type { ImageMetadata } from 'astro';
+
+interface Props {
+	/** 图片：import 的模块（Astro 优化 WebP/懒加载）或 public 路径 / 外链 URL */
+	src: string | ImageMetadata;
+	alt: string;
+	/** 可选图注，置于图片下方 */
+	caption?: string;
+	/** 灯箱：点击放大原图（默认 true） */
+	lightbox?: boolean;
+	/** 通栏：撑满正文宽度（默认 false） */
+	full?: boolean;
+}
+
+const { src, alt, caption, lightbox = true, full = false } = Astro.props;
+
+const optimized = typeof src !== 'string';
+---
+
+<figure
+	class:list={['article-figure', full && 'af-full']}
+	data-lightbox={lightbox ? 'true' : 'false'}
+>
+	{
+		optimized ? (
+			<Image src={src} alt={alt} loading="lazy" format="webp" class="af-img" />
+		) : (
+			<img src={src} alt={alt} loading="lazy" class="af-img" />
+		)
+	}
+	{caption && <figcaption class="af-caption">{caption}</figcaption>}
+</figure>
+
+<style is:global>
+	.article-figure {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		gap: 10px;
+		margin: 28px auto;
+		background: transparent;
+		border: none;
+		box-shadow: none;
+		padding: 0;
+	}
+	.af-img {
+		max-width: 100%;
+		height: auto;
+		border-radius: 8px;
+	}
+	.article-figure.af-full .af-img {
+		width: 100%;
+	}
+	.af-caption {
+		font-size: 13px;
+		line-height: 1.6;
+		color: var(--text-mute);
+		text-align: center;
+	}
+	.af-lightbox {
+		position: fixed;
+		inset: 0;
+		z-index: 999;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		padding: 24px;
+		background: rgba(2, 6, 23, 0.92);
+		cursor: zoom-out;
+		animation: af-fade-in 0.25s ease;
+	}
+	.af-lightbox img {
+		max-width: 100%;
+		max-height: 100%;
+		border-radius: 8px;
+		box-shadow: 0 30px 60px -12px rgba(0, 0, 0, 0.6);
+	}
+	@keyframes af-fade-in {
+		from {
+			opacity: 0;
+			transform: scale(0.98);
+		}
+		to {
+			opacity: 1;
+			transform: scale(1);
+		}
+	}
+	@media (max-width: 768px) {
+		.article-figure.af-full .af-img {
+			width: 100%;
+			max-width: 100%;
+		}
+	}
+</style>
+
+<script>
+	import { initArticleLightbox } from '../lib/article-lightbox';
+	initArticleLightbox();
+</script>
