@@ -85,9 +85,7 @@ const lead = posts[0] ?? null;
 
 	<!-- 全屏开屏（hero，替代 masthead） -->
 	<section class="hero">
-		<div class="hero-bg">
-			<div class="hero-overlay"></div>
-		</div>
+		<div class="hero-overlay"></div>
 		<div class="hero-inner">
 			<h1 class="hero-title">纸上拾光<span class="mast-sub">/ 档案目录 NO.001</span></h1>
 			<div class="hero-slogan" id="mastSlogan"></div>
@@ -230,16 +228,11 @@ const lead = posts[0] ?? null;
 			justify-content: center;
 			width: 100vw;
 			margin-left: calc(50% - 50vw);
-			overflow: hidden;
-		}
-		.hero-bg {
-			position: fixed;
-			inset: 0;
 			background-image: url('/06637e3637aa50466b3ed9b74ad08aed.jpg');
 			background-size: cover;
 			background-position: center;
-			animation: heroBgShow 4s ease-out backwards;
-			will-change: opacity;
+			animation: heroBgShow 4s ease-out both;
+			overflow: hidden;
 		}
 		.hero-overlay {
 			position: absolute;
@@ -817,25 +810,6 @@ const lead = posts[0] ?? null;
 			var top = next.getBoundingClientRect().top + window.scrollY - 20;
 			window.scrollTo({ top: top, behavior: 'smooth' });
 		});
-
-		/* ============ 滚动时 hero 背景透明渐隐 ============ */
-		(function () {
-			var bg = document.querySelector('.hero-bg');
-			if (!bg) return;
-			var reduce =
-				window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-			function onScroll() {
-				var y = window.scrollY;
-				var h = bg.offsetHeight || 1;
-				var p = Math.min(1, y / (h * 0.8));
-				bg.style.opacity = String(1 - p);
-			}
-			if (reduce) return;
-			setTimeout(function () {
-				window.addEventListener('scroll', onScroll, { passive: true });
-				onScroll();
-			}, 4200);
-		})();
 
 		/* ============ Toast ============ */
 		var toastTimer;
