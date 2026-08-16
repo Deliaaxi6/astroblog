@@ -521,8 +521,16 @@ const buildStamp = '2026-08-14T00:00:00';
 		});
 		document.getElementById('player').addEventListener('click', function () {
 			var s = playlist[cur];
-			showToast('🎵 ' + (s ? s.title + ' - ' + s.artist : '音乐服务未配置'));
+			if (s) {
+				showToast('🎵 ' + s.title + ' - ' + s.artist);
+			} else if (musicFailed) {
+				showToast('🔄 音乐服务暂不可达，正在重试…');
+				retryMusic();
+			} else {
+				showToast('🎵 音乐服务未配置');
+			}
 		});
+		var musicFailed = false;
 		function initMusic() {
 			var ids = (window.musicIds || []).filter(Boolean);
 			if (!ids.length) {
@@ -543,9 +551,11 @@ const buildStamp = '2026-08-14T00:00:00';
 						};
 					});
 					if (!playlist.length) {
-						document.getElementById('playerLyric').textContent = '云端链路受阻';
+						musicFailed = true;
+						document.getElementById('playerLyric').textContent = '云端链路受阻（点击卡片重试）';
 						return;
 					}
+					musicFailed = false;
 					loadSong();
 					playing = true;
 					setPlayUi(true);
@@ -555,8 +565,15 @@ const buildStamp = '2026-08-14T00:00:00';
 					});
 				})
 				.catch(function () {
-					document.getElementById('playerLyric').textContent = '音乐服务不可达';
+					musicFailed = true;
+					document.getElementById('playerLyric').textContent = '音乐服务不可达（点击卡片重试）';
 				});
+		}
+		function retryMusic() {
+			musicFailed = false;
+			playlist = [];
+			cur = 0;
+			initMusic();
 		}
 		initMusic();
 
