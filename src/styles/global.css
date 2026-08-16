@@ -99,6 +99,18 @@ body {
 	background: rgba(244, 243, 239, 0.96);
 	border-bottom: 2px solid #23232b;
 	transition: transform 0.5s;
+	animation: navDrop 0.6s ease-out backwards;
+}
+
+@keyframes navDrop {
+	from {
+		opacity: 0;
+		transform: translateY(-100%);
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0);
+	}
 }
 
 [data-theme='dark'] #navbar {
@@ -190,6 +202,28 @@ body {
 	padding: 96px 24px 40px;
 	position: relative;
 	z-index: 10;
+}
+
+body:not(.home) .container {
+	animation: contentUp 0.9s ease-out 0.12s backwards;
+}
+
+@keyframes contentUp {
+	from {
+		opacity: 0;
+		transform: translateY(24px);
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0);
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	#navbar,
+	body:not(.home) .container {
+		animation: none;
+	}
 }
 
 /* ========== 搜索框 ========== */

@@ -52,7 +52,7 @@ import '../styles/global.css';
 			})();
 		</script>
 	</head>
-	<body>
+	<body class:list={{ home: Astro.url.pathname === '/' }}>
 		<Background />
 		<header id="navbar">
 			<a class="brand" href="/"><span class="mark"></span>纸上拾光</a>
