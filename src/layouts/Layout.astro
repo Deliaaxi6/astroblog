@@ -44,6 +44,18 @@ import '../styles/global.css';
 		<script is:inline>
 			(() => {
 				try {
+					if (!sessionStorage.getItem('navPlayed')) {
+						sessionStorage.setItem('navPlayed', '1');
+						document.documentElement.classList.add('nav-anim');
+					}
+				} catch (e) {
+					/* noop */
+				}
+			})();
+		</script>
+		<script is:inline>
+			(() => {
+				try {
 					const t = localStorage.getItem('theme') || 'dark';
 					document.documentElement.setAttribute('data-theme', t);
 				} catch (e) {

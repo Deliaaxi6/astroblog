@@ -99,6 +99,9 @@ body {
 	background: rgba(244, 243, 239, 0.96);
 	border-bottom: 2px solid #23232b;
 	transition: transform 0.5s;
+}
+
+html.nav-anim #navbar {
 	animation: navDrop 0.6s ease-out backwards;
 }
 
@@ -220,7 +223,7 @@ body:not(.home) .container {
 }
 
 @media (prefers-reduced-motion: reduce) {
-	#navbar,
+	html.nav-anim #navbar,
 	body:not(.home) .container {
 		animation: none;
 	}
