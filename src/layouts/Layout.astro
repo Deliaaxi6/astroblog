@@ -114,19 +114,18 @@ import '../styles/global.css';
 			setInterval(tickUptime, 60000);
 			const lastY = { v: 0 };
 			const nav = document.getElementById('navbar');
-			window.addEventListener(
-				'scroll',
-				() => {
-					const y = window.scrollY;
-					if (y > lastY.v && y > 80) {
-						nav.classList.add('hidden');
-					} else {
-						nav.classList.remove('hidden');
-					}
-					lastY.v = y;
-				},
-				{ passive: true }
-			);
+			const applyNavState = () => {
+				const y = window.scrollY;
+				nav.classList.toggle('scrolled', y > 80);
+				if (y > lastY.v && y > 80) {
+					nav.classList.add('hidden');
+				} else {
+					nav.classList.remove('hidden');
+				}
+				lastY.v = y;
+			};
+			window.addEventListener('scroll', applyNavState, { passive: true });
+			applyNavState();
 		</script>
 	</body>
 </html>

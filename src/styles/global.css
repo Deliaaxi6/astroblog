@@ -125,6 +125,53 @@ html.nav-anim #navbar {
 	transform: translateY(-100%);
 }
 
+/* 首页 hero 场景：导航透明叠加，滚动后恢复纸色 */
+body.home #navbar {
+	background: transparent;
+	border-bottom-color: transparent;
+	transition: transform 0.5s, background 0.3s, border-color 0.3s;
+}
+
+body.home #navbar.scrolled {
+	background: rgba(244, 243, 239, 0.96);
+	border-bottom-color: #23232b;
+}
+
+[data-theme='dark'] body.home #navbar.scrolled {
+	background: rgba(28, 29, 36, 0.96);
+	border-bottom-color: #e6e4dd;
+}
+
+body.home #navbar .brand,
+body.home #navbar .nav-links a {
+	color: #f4f3ef;
+}
+
+body.home #navbar.scrolled .brand,
+body.home #navbar.scrolled .nav-links a {
+	color: var(--text-main);
+}
+
+body.home #navbar .nav-links a:hover,
+body.home #navbar .nav-links a.active {
+	color: var(--hi);
+}
+
+body.home #navbar.scrolled .nav-links a:hover,
+body.home #navbar.scrolled .nav-links a.active {
+	color: var(--indigo);
+}
+
+[data-theme='dark'] body.home #navbar .brand,
+[data-theme='dark'] body.home #navbar .nav-links a {
+	color: #e6e4dd;
+}
+
+[data-theme='dark'] body.home #navbar.scrolled .brand,
+[data-theme='dark'] body.home #navbar.scrolled .nav-links a {
+	color: var(--text-main);
+}
+
 .brand {
 	font-family: var(--serif);
 	font-size: 21px;
@@ -205,6 +252,14 @@ html.nav-anim #navbar {
 	padding: 96px 24px 40px;
 	position: relative;
 	z-index: 10;
+}
+
+body.home .container {
+	padding-top: 0;
+}
+
+body.home .site-footer {
+	padding: 28px 0;
 }
 
 body:not(.home) .container {
