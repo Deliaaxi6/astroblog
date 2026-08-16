@@ -31,6 +31,16 @@ import '../styles/global.css';
 		<meta property="og:site_name" content="我的博客" />
 		<meta name="twitter:card" content="summary" />
 		{coverUrl && <meta property="og:image" content={coverUrl} />}
+		<link rel="canonical" href={Astro.url.href} />
+		<link rel="preconnect" href="https://bu.dusays.com" crossorigin />
+		<script type="application/ld+json" set:html={JSON.stringify({
+			'@context': 'https://schema.org',
+			'@type': 'WebSite',
+			name: '我的博客',
+			url: site,
+			description,
+		})} />
+		<slot name="head" />
 		<script is:inline>
 			(() => {
 				try {
