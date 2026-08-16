@@ -22,6 +22,83 @@ function esc(s) {
     .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
+/* ============ 极简 Markdown 渲染（管理台预览用） ============ */
+function mdInline(s) {
+  s = esc(s);
+  s = s.replace(/`([^`]+)`/g, '<code>$1</code>');
+  s = s.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+  s = s.replace(/\*([^*]+)\*/g, '<em>$1</em>');
+  s = s.replace(/!\[([^\]]*)\]\(([^)\s]+)\)/g, '<img src="$2" alt="$1">');
+  s = s.replace(/\[([^\]]+)\]\(([^)\s]+)\)/g, '<a href="$2" target="_blank">$1</a>');
+  return s;
+}
+
+function renderMd(src) {
+  var lines = String(src || '').replace(/\r\n/g, '\n').split('\n');
+  var out = [], inCode = false, codeBuf = [], list = null, i, m;
+  function closeList() {
+    if (list) { out.push(list === 'ul' ? '</ul>' : '</ol>'); list = null; }
+  }
+  for (i = 0; i < lines.length; i++) {
+    var line = lines[i];
+    if (/^```/.test(line)) {
+      if (inCode) {
+        out.push('<pre><code>' + esc(codeBuf.join('\n')) + '</code></pre>');
+        codeBuf = []; inCode = false;
+      } else { closeList(); inCode = true; }
+      continue;
+    }
+    if (inCode) { codeBuf.push(line); continue; }
+    if ((m = /^(#{1,4})\s+(.*)$/.exec(line))) {
+      closeList();
+      out.push('<h' + m[1].length + '>' + mdInline(m[2]) + '</h' + m[1].length + '>');
+      continue;
+    }
+    if (/^---+$/.test(line.trim())) { closeList(); out.push('<hr>'); continue; }
+    if (/^>\s?/.test(line)) {
+      closeList();
+      out.push('<blockquote>' + mdInline(line.replace(/^>\s?/, '')) + '</blockquote>');
+      continue;
+    }
+    if ((m = /^[-*]\s+(.*)$/.exec(line))) {
+      if (list !== 'ul') { closeList(); out.push('<ul>'); list = 'ul'; }
+      out.push('<li>' + mdInline(m[1]) + '</li>');
+      continue;
+    }
+    if ((m = /^\d+\.\s+(.*)$/.exec(line))) {
+      if (list !== 'ol') { closeList(); out.push('<ol>'); list = 'ol'; }
+      out.push('<li>' + mdInline(m[1]) + '</li>');
+      continue;
+    }
+    closeList();
+    if (line.trim() !== '') out.push('<p>' + mdInline(line) + '</p>');
+  }
+  closeList();
+  if (inCode) out.push('<pre><code>' + esc(codeBuf.join('\n')) + '</code></pre>');
+  return out.join('');
+}
+
+function bindMdPreview(box) {
+  var writeTab = box.querySelector('#mdTabWrite');
+  var previewTab = box.querySelector('#mdTabPreview');
+  var ta = box.querySelector('#f_content');
+  var pv = box.querySelector('#f_preview');
+  if (!writeTab || !previewTab || !ta || !pv) return;
+  writeTab.addEventListener('click', function () {
+    writeTab.classList.add('active');
+    previewTab.classList.remove('active');
+    ta.style.display = 'block';
+    pv.style.display = 'none';
+  });
+  previewTab.addEventListener('click', function () {
+    previewTab.classList.add('active');
+    writeTab.classList.remove('active');
+    pv.innerHTML = renderMd(ta.value);
+    ta.style.display = 'none';
+    pv.style.display = 'block';
+  });
+}
+
 /* ============ Tab 切换 ============ */
 var tabs = document.querySelectorAll('#tabs button');
 tabs.forEach(function (btn) {
@@ -85,12 +162,17 @@ function editPost(id) {
       '<div class="field"><label>描述</label><input id="f_desc" value="' + esc(fm.description || '') + '"></div>' +
       '<div class="field"><label>封面图 URL</label><input id="f_cover" value="' + esc(fm.cover || '') + '"></div>' +
       '<div class="field field-check"><input type="checkbox" id="f_draft" ' + (fm.draft ? 'checked' : '') + '><label for="f_draft">草稿（不发布）</label></div>' +
-      '<div class="field"><label>正文（Markdown）</label><textarea id="f_content" rows="16">' + esc(fm.content || '') + '</textarea></div>' +
+      '<div class="field"><label>正文（Markdown）</label>' +
+      '<div class="md-tabs"><button type="button" class="btn btn-ghost btn-sm active" id="mdTabWrite">✏️ 编辑</button>' +
+      '<button type="button" class="btn btn-ghost btn-sm" id="mdTabPreview">👁️ 预览</button></div>' +
+      '<textarea id="f_content" rows="16">' + esc(fm.content || '') + '</textarea>' +
+      '<div id="f_preview" class="md-preview" style="display:none"></div></div>' +
       '<div class="row">' +
       '<button class="btn btn-primary" onclick="savePost()">保存</button>' +
       (id !== 'new' ? '<button class="btn btn-danger" onclick="deletePost(editingPostId)">删除</button>' : '') +
       '<button class="btn btn-ghost" onclick="backToPosts()">取消</button>' +
       '</div>';
+    bindMdPreview(box);
   };
   if (id === 'new') { fill({}); return; }
   api('/api/posts/get', { id: id }).then(function (d) {
