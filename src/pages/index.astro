@@ -85,8 +85,9 @@ const lead = posts[0] ?? null;
 
 	<!-- 全屏开屏（hero，替代 masthead） -->
 	<section class="hero">
-		<div class="hero-bg"></div>
-		<div class="hero-overlay"></div>
+		<div class="hero-bg">
+			<div class="hero-overlay"></div>
+		</div>
 		<div class="hero-inner">
 			<h1 class="hero-title">纸上拾光<span class="mast-sub">/ 档案目录 NO.001</span></h1>
 			<div class="hero-slogan" id="mastSlogan"></div>
@@ -232,7 +233,7 @@ const lead = posts[0] ?? null;
 			overflow: hidden;
 		}
 		.hero-bg {
-			position: absolute;
+			position: fixed;
 			inset: 0;
 			background-image: url('/06637e3637aa50466b3ed9b74ad08aed.jpg');
 			background-size: cover;
