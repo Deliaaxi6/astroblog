@@ -1,6 +1,6 @@
 # AstroBlog 项目状态与待办清单
 
-> 最后更新：2026-08-14（第 11 次提交 `8d3ff77`）
+> 最后更新：2026-08-16（第 16 次提交 `5eea706`）
 > 项目位置：`E:\develop\AstroBlog`
 
 ## 一、项目架构
@@ -22,7 +22,7 @@ AstroBlog/
 
 关键设计：**CMS 与博客同仓**，管理台直写 `src/content/*.md` 与 `src/data/*.ts`，`npm run build` 后生效。
 
-## 二、已完成（11 个提交）
+## 二、已完成（16 个提交）
 
 | 提交 | 内容 |
 |---|---|
@@ -37,6 +37,12 @@ AstroBlog/
 | `aa011bc` | 管理台页面（六 tab，http://localhost:8080） |
 | `1cfc5d8` | 音乐真实播放（网易云代理 API + LRC 歌词 + 真实 Audio） |
 | `8d3ff77` | 3 篇示例文章补封面 |
+| `df9d3ce` | TODO.md 项目状态文档 |
+| `dd77280` | 首页"说说轮播"接真实 moments（标题=首行、封面=首图、空态保护、点击跳 /moments） |
+| `611dd0a` | 管理台编辑器 Markdown 实时预览（编辑/预览 tab，零依赖渲染器，XSS 转义） |
+| `196ea0e` | 播放器线上回退：服务不可达时显示"点击卡片重试"，点击触发重连 |
+| `bd935f1` | SEO 深化：canonical + bu.dusays.com 预连接 + WebSite/Article JSON-LD |
+| `5eea706` | 图片懒加载收尾（首页 poster 卡片图） |
 
 ## 三、待完成 — 需用户操作（代码已就绪）
 
@@ -59,29 +65,24 @@ AstroBlog/
 
 ### 3. 部署上线 ⬜
 - 静态站：推荐 Cloudflare Pages（免费）或腾讯云轻量服务器（国内快，可同时跑 CMS）
-- 需在 `astro.config.mjs` 填 `site` 域名（影响 RSS / Sitemap / OG 的绝对 URL）
+- 需在 `astro.config.mjs` 填 `site` 域名（影响 RSS / Sitemap / OG / canonical / JSON-LD 的绝对 URL）
 - Git 远程推送：用户自行执行（`git remote add origin ...` + `git push`），当前分支 `master`，未确认是否已推送
 
 ### 4. CMS 线上部署方案 ⬜ 未规划
 - 音乐 API / 管理台依赖 FastAPI 后端，纯静态托管装不下
 - 可选：VPS 同机部署 / PaaS（Railway、Render、Zeabur）/ 暂保持本机使用
 
-## 四、待完成 — AI 可继续（未开始）
+## 四、待完成 — AI 可继续（原清单已全部完成 ✅）
 
-| 事项 | 说明 | 预估文件 |
-|---|---|---|
-| 首页"说说轮播"接真实数据 | 当前 `chatters` 为硬编码演示数据（index.astro 31-50 行），可改为读取真实 moments | 1 |
-| 管理台编辑器 Markdown 实时预览 | 纯 textarea 编辑，无预览 | 2 |
-| 首页播放器线上回退策略 | 线上无 CMS 时优雅降级提示（当前会显示"音乐服务不可达"） | 1 |
-| 示例文章内容扩充 | 目前仅 4 篇测试性质文章 | - |
+原四项（说说轮播真实数据 / 编辑器 MD 预览 / 播放器回退 / 示例文章扩充）中前三项已完成，仅剩"示例文章内容扩充"——需要用户提供真实内容方向后 AI 才能代写。
 
 ## 五、后续规划（可选优化）
 
-- 持续写作真实内容（替换示例文章）
-- 友链 / 项目 / 相册内容真实化（当前为原版演示数据）
-- 音乐歌单自定义（`cloudMusicIds` 目前用原版 3 首）
-- SEO 深化：逐篇完善 description、关键词
-- 性能：图片懒加载、字体子集化、预加载关键资源
+- 持续写作真实内容（替换示例文章）⬅ 需用户提供素材/方向
+- 友链 / 项目 / 相册内容真实化（当前为原版演示数据）⬅ 需用户提供真实信息
+- 音乐歌单自定义（`cloudMusicIds` 目前用原版 3 首，可做成管理台可编辑）
+- SEO 已部分深化（canonical/JSON-LD/预连接），剩余：逐篇完善 description、关键词
+- 性能：字体子集化、预加载关键资源（懒加载已基本覆盖）
 - R2 用量监控 / 防盗链配置
 - 评论数据备份策略
 
@@ -111,6 +112,6 @@ npm run dev     # 开发预览（全文搜索需先 build 一次生成索引）
 - CMS 端口 8080 曾被旧进程占用导致新代码不生效，重启流程需先确认监听 PID。
 
 ### 环境信息
-- Git：user `Deliaaxi6` / `deliaaxi6@gmail.com`，分支 `master`，共 11 个提交，无远程
+- Git：user `Deliaaxi6` / `deliaaxi6@gmail.com`，分支 `master`，共 16 个提交，无远程
 - 依赖：Astro 7.2.1、FastAPI 0.141.1、boto3、pyyaml、pagefind 1.5.2、@astrojs/markdown-remark
 - Python：Miniconda3（含 requests、pyyaml 等）
