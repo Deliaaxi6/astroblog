@@ -498,8 +498,8 @@
         { k: 'name', label: '名称', required: true },
         { k: 'description', label: '描述', type: 'textarea', rows: 2 },
         { k: 'icon', label: '图标', ph: 'emoji 或图标名' },
-        { k: 'url', label: '链接', ph: 'https://' },
-        { k: 'date', label: '日期', ph: '2024-01' },
+        { k: 'githubUrl', label: 'GitHub 链接', ph: 'https://' },
+        { k: 'tags', label: '标签', type: 'tags', rows: 3, ph: '每行一个，如：Gromacs' },
       ],
     },
     albums: {
@@ -573,9 +573,11 @@
     const ed = $('#dataEditor-' + kind);
     ed.style.display = '';
     const rows = cfg.fields.map((f) => {
-      const v = item[f.k] ?? '';
-      const input = f.type === 'textarea'
-        ? `<textarea class="field" id="df-${f.k}" rows="${f.rows || 2}">${esc(v)}</textarea>`
+      const v = f.type === 'tags'
+        ? (Array.isArray(item[f.k]) ? (item[f.k] || []).join('\n') : (item[f.k] ?? ''))
+        : (item[f.k] ?? '');
+      const input = f.type === 'textarea' || f.type === 'tags'
+        ? `<textarea class="field" id="df-${f.k}" rows="${f.rows || 2}" placeholder="${esc(f.ph || '')}">${esc(v)}</textarea>`
         : `<input class="field" id="df-${f.k}" placeholder="${esc(f.ph || '')}" value="${esc(v)}">`;
       return `<div class="field"><label>${f.label}</label>${input}</div>`;
     }).join('');
@@ -637,7 +639,10 @@
     const item = {};
     cfg.fields.forEach((f) => {
       const el = $('#df-' + f.k);
-      if (el) item[f.k] = el.value.trim();
+      if (!el) return;
+      item[f.k] = f.type === 'tags'
+        ? el.value.split('\n').map((s) => s.trim()).filter(Boolean)
+        : el.value.trim();
     });
     const missing = cfg.fields.find((f) => f.required && !item[f.k]);
     if (missing) { setStatus('请填写' + missing.label, 'err'); return; }
