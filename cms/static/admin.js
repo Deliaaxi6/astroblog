@@ -211,13 +211,13 @@
         postJson('/api/moments/list'),
         getJson('/api/site-data/all'),
         getJson('/api/site-data/all'),
-        getJson('/api/site-data/all'),
+        getJson('/api/gallery/albums'),
         getJson('/api/music/playlist')
       ]);
       posts = p.posts || [];
       moments = m.moments || [];
-      const friends = (fr.friends || []).length;
-      const projects = (pr.projects || []).length;
+      const friends = (((fr.data || {}).friends) || []).length;
+      const projects = (((pr.data || {}).projects) || []).length;
       const albums = (al.albums || []).length;
       const draft = posts.filter((x) => !x.draft).length;
       const tags = new Set();
@@ -529,7 +529,7 @@
       const j = cfg.api === 'gallery'
         ? await getJson('/api/gallery/albums')
         : await getJson('/api/site-data/all');
-      dataCache[kind] = (cfg.api === 'gallery' ? (j.albums || []) : (j[kind] || []));
+      dataCache[kind] = (cfg.api === 'gallery' ? (j.albums || []) : (((j.data || {})[kind]) || []));
       renderDataList(kind);
       setStatus(`${cfg.label}数据已读取（${dataCache[kind].length} 条）`, 'ok');
     } catch (e) {

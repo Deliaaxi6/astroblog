@@ -42,3 +42,11 @@ app.include_router(gallery_router, prefix="/api/gallery", tags=["Gallery"])
 
 STATIC_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "static")
 app.mount("/", StaticFiles(directory=STATIC_DIR, html=True), name="static")
+
+
+@app.middleware("http")
+async def no_cache_admin_assets(request, call_next):
+    response = await call_next(request)
+    if request.url.path in ("/", "/admin.js", "/index.html") or request.url.path.endswith((".js", ".css")):
+        response.headers["Cache-Control"] = "no-store"
+    return response

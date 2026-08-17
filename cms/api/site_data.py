@@ -42,6 +42,23 @@ TARGETS = {
 TS_RE = re.compile(r"export const \w+: [^=]+= (\[[\s\S]*\]);")
 
 
+def _parse_ts_array(text: str) -> list:
+    """兼容两种格式：CMS 生成的 JSON 与手写 TS 对象字面量"""
+    try:
+        return json.loads(text)
+    except Exception:
+        pass
+    s = text.strip()
+    s = re.sub(r",\s*([}\]])", r"\1", s)
+    s = re.sub(r"(\{|\,)\s*'?([A-Za-z_]\w*)'?\s*:", r'\1"\2":', s)
+    s = s.replace("'", '"')
+    s = re.sub(r":\s*([A-Za-z_][\w./:#()\-]*)\s*([,\]})])", r':"\1"\2', s)
+    try:
+        return json.loads(s)
+    except Exception:
+        return []
+
+
 @router.get("/all")
 async def read_all():
     result = {}
@@ -51,12 +68,9 @@ async def read_all():
                 content = f.read()
             m = TS_RE.search(content)
             if m:
-                try:
-                    result[key] = json.loads(m.group(1))
-                    continue
-                except Exception:
-                    pass
-            result[key] = []
+                result[key] = _parse_ts_array(m.group(1))
+            else:
+                result[key] = []
         else:
             result[key] = []
     return {"success": True, "data": result}
