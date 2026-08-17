@@ -382,6 +382,7 @@
       const j = await postJson('/api/posts/save', payload);
       setStatus(publish ? `已发布：${j.title || payload.title}` : `已保存草稿：${payload.title}`, 'ok');
       addOp(`${publish ? '发布' : '保存'}文章：${payload.title}`);
+      if (!payload.draft) triggerRebuild();
       backToPosts();
     } catch (e) { setStatus('保存失败：' + e.message, 'err'); }
   }
@@ -390,6 +391,7 @@
     try {
       await postJson('/api/posts/delete', { id });
       addOp('删除文章：' + id);
+      triggerRebuild();
       loadPosts();
     } catch (e) { setStatus('删除失败：' + e.message, 'err'); }
   }
@@ -408,7 +410,7 @@
           <div class="list-item">
             <span class="list-idx">NO.${pad(i + 1)}</span>
             <div class="list-main">
-              <h4>${esc(x.text || '(空)')}</h4>
+              <h4>${esc(x.content || '(空)')}</h4>
               <p>${fmtDate(x.date)}${x.pinned ? ' <span class="badge seal">置顶</span>' : ''}</p>
             </div>
             <div class="list-actions">
@@ -424,7 +426,7 @@
   function newMoment() { openMoment(null); }
   async function openMoment(id) {
     curMomentId = id;
-    let item = { text: '', date: nowDate(), pinned: false };
+    let item = { content: '', date: nowDate(), pinned: false };
     if (id) {
       try {
         const j = await postJson('/api/moments/list');
@@ -435,7 +437,7 @@
     $('#momentEditorCard').style.display = '';
     $('#momentEditorTitle').innerHTML = `${id ? '编辑说说' : '新说说'} <span class="no">FILE / EDIT</span>`;
     $('#momentEditor').innerHTML = `
-      <div class="field"><label>内容</label><textarea id="m-text" rows="5">${esc(item.text || '')}</textarea></div>
+      <div class="field"><label>内容</label><textarea id="m-text" rows="5">${esc(item.content || '')}</textarea></div>
       <div class="field-grid">
         <div class="field"><label>日期</label><input id="m-date" type="date" value="${esc(item.date || nowDate())}"></div>
         <div class="field field-check" style="align-self:end;margin-bottom:14px"><input type="checkbox" id="m-pinned" ${item.pinned ? 'checked' : ''}><label>置顶</label></div>
@@ -448,15 +450,18 @@
   async function saveMoment() {
     const payload = {
       id: curMomentId || null,
-      text: $('#m-text').value.trim(),
-      date: $('#m-date').value || nowDate(),
-      pinned: $('#m-pinned').checked
+      content: $('#m-text').value.trim(),
+      frontmatter: {
+        date: $('#m-date').value || nowDate(),
+        pinned: $('#m-pinned').checked,
+      },
     };
-    if (!payload.text) { setStatus('请填写内容', 'err'); return; }
+    if (!payload.content) { setStatus('请填写内容', 'err'); return; }
     try {
       await postJson('/api/moments/save', payload);
       setStatus('说说已保存', 'ok');
-      addOp('保存说说：' + payload.text.slice(0, 20));
+      addOp('保存说说：' + payload.content.slice(0, 20));
+      triggerRebuild();
       backToMoments();
     } catch (e) { setStatus('保存失败：' + e.message, 'err'); }
   }
@@ -465,6 +470,7 @@
     try {
       await postJson('/api/moments/delete', { id });
       addOp('删除说说：' + id);
+      triggerRebuild();
       loadMoments();
     } catch (e) { setStatus('删除失败：' + e.message, 'err'); }
   }
@@ -623,7 +629,7 @@
           addOp(`编辑相册：${title}`);
         }
         setStatus('相册已保存，触发展示端重建', 'ok');
-        fetch('/api/sync/rebuild', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' }).catch(() => {});
+        triggerRebuild();
         loadDataTab(kind);
       } catch (e) { setStatus('保存失败：' + e.message, 'err'); }
       return;
@@ -651,6 +657,7 @@
       await postJson('/api/site-data/sync', { target: kind, items: arr });
       setStatus(`${cfg.label}已保存（${arr.length} 条）`, 'ok');
       addOp(`更新${cfg.label}数据：${arr.length} 条`);
+      triggerRebuild();
       loadDataTab(kind);
     } catch (e) { setStatus('保存失败：' + e.message, 'err'); }
   }
@@ -667,7 +674,7 @@
         if (!j.success) throw new Error(j.message || '删除失败');
         setStatus('相册已删除，触发展示端重建', 'ok');
         addOp(`删除相册：${item.title}`);
-        fetch('/api/sync/rebuild', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' }).catch(() => {});
+        triggerRebuild();
         loadDataTab(kind);
       } catch (e) { setStatus('删除失败：' + e.message, 'err'); }
       return;
@@ -678,6 +685,7 @@
       await postJson('/api/site-data/sync', { target: kind, items: arr });
       setStatus(`${cfg.label}记录已删除`, 'ok');
       addOp(`删除${cfg.label}记录`);
+      triggerRebuild();
       loadDataTab(kind);
     } catch (e) { setStatus('删除失败：' + e.message, 'err'); }
   }
@@ -793,6 +801,7 @@
       await postJson('/api/music/playlist', { ids: musicItems.map((x) => x.id) });
       setStatus('歌单已保存', 'ok');
       addOp('保存歌单：' + musicItems.length + ' 首');
+      triggerRebuild();
     } catch (e) { setStatus('保存失败：' + e.message, 'err'); }
   }
 
@@ -849,6 +858,35 @@
     const b = $('#themeBtn');
     if (b) b.textContent = (document.documentElement.getAttribute('data-theme') || 'dark') === 'dark' ? '☾' : '☀';
   })();
+
+  /* ============ 触发展示端重建（防抖 + 等待进行中的构建） ============ */
+  let rebuildQueued = false;
+  function triggerRebuild() {
+    if (rebuildQueued) return;
+    rebuildQueued = true;
+    const fire = () => {
+      fetch('/api/sync/rebuild', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' }).catch(() => {});
+      setTimeout(() => (rebuildQueued = false), 5000);
+    };
+    const status = () => fetch('/api/sync/status', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' })
+      .then((r) => r.json())
+      .catch(() => null);
+    status().then((j) => {
+      if (j && j.status && j.status.running) {
+        let guard = 0;
+        const poll = setInterval(() => {
+          status().then((j2) => {
+            if ((j2 && j2.status && !j2.status.running) || ++guard > 40) {
+              clearInterval(poll);
+              fire();
+            }
+          });
+        }, 3000);
+      } else {
+        fire();
+      }
+    }).catch(() => fire());
+  }
 
   /* ============ 预览弹层 ============ */
   function openPreview(path) {

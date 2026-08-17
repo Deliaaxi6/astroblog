@@ -20,6 +20,7 @@ const moments = defineCollection({
 		date: z.coerce.date(),
 		location: z.string().optional(),
 		images: z.array(z.string()).optional(),
+		pinned: z.boolean().optional(),
 	}),
 });
 

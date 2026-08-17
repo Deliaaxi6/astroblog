@@ -33,11 +33,13 @@ def _parse(raw: str):
 
 def _dump(fm: dict) -> str:
     lines = ["---"]
-    for k in ["id", "date", "location", "images"]:
+    for k in ["id", "date", "location", "images", "pinned"]:
         if k not in fm or fm[k] is None or fm[k] == "":
             continue
         v = fm[k]
-        if isinstance(v, list):
+        if isinstance(v, bool):
+            lines.append(f"{k}: {'true' if v else 'false'}")
+        elif isinstance(v, list):
             lines.append(f"{k}: {json.dumps(v, ensure_ascii=False)}")
         else:
             lines.append(f"{k}: {json.dumps(str(v), ensure_ascii=False)}")
@@ -62,6 +64,7 @@ def _scan():
                 "date": fm.get("date", ""),
                 "location": fm.get("location", ""),
                 "images": fm.get("images", []),
+                "pinned": bool(fm.get("pinned", False)),
                 "content": body.strip(),
             })
         except Exception:

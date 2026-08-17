@@ -3,7 +3,9 @@ import { getCollection } from 'astro:content';
 import Layout from '../layouts/Layout.astro';
 
 const moments = (await getCollection('moments')).sort(
-	(a, b) => b.data.date.valueOf() - a.data.date.valueOf()
+	(a, b) =>
+		(b.data.pinned ? 1 : 0) - (a.data.pinned ? 1 : 0) ||
+		b.data.date.valueOf() - a.data.date.valueOf()
 );
 
 const authorName = '我的博客';
@@ -41,7 +43,10 @@ const formatter = new Intl.DateTimeFormat('zh-CN', {
 							<img src={avatar} alt={authorName} />
 						</div>
 						<div>
-							<h3>{authorName}</h3>
+							<h3>
+								{authorName}
+								{moment.data.pinned && <span class="mm-pin">置顶</span>}
+							</h3>
 							<span class="mm-time">{formatter.format(moment.data.date)}</span>
 						</div>
 					</header>
@@ -219,6 +224,18 @@ const formatter = new Intl.DateTimeFormat('zh-CN', {
 		font-weight: 900;
 		color: var(--indigo-light);
 		letter-spacing: 0.05em;
+	}
+	.mm-pin {
+		display: inline-block;
+		margin-left: 8px;
+		padding: 1px 8px;
+		font-size: 10px;
+		font-weight: 900;
+		letter-spacing: 0.1em;
+		color: #fff;
+		background: var(--indigo-light);
+		border-radius: 999px;
+		vertical-align: 2px;
 	}
 	.mm-time {
 		font-size: 11px;
