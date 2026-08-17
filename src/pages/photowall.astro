@@ -1,6 +1,19 @@
 ---
 import Layout from '../layouts/Layout.astro';
-import { albums } from '../data/albums';
+import { getCollection } from 'astro:content';
+import { Image } from 'astro:assets';
+
+const albums = (await getCollection('albums')).sort((a, b) =>
+	String(b.data.createdAt).localeCompare(String(a.data.createdAt)),
+);
+const plainAlbums = albums.map((a) => ({
+	id: a.data.id,
+	title: a.data.title,
+	description: a.data.description ?? '',
+	cover: a.data.cover.src,
+	date: a.data.createdAt,
+	photos: (a.data.photos ?? []).map((p) => p.src),
+}));
 ---
 
 <Layout title="光影画廊 · 照片墙" description="定格时间，封存每一次心跳。">
@@ -17,23 +30,23 @@ import { albums } from '../data/albums';
 	<div id="albumView" class="al-grid">
 		{
 			albums.map((album, i) => (
-				<button class="al-card" data-id={album.id} data-search={`${album.title} ${album.description}`.toLowerCase()}>
+				<button class="al-card" data-id={album.data.id} data-search={`${album.data.title} ${album.data.description ?? ''}`.toLowerCase()}>
 					<div class="al-stack">
 						<div class="al-photo al-back">
-							{album.photos[2] && <img src={album.photos[2].url} alt="" loading="lazy" />}
+							{album.data.photos[2] && <Image src={album.data.photos[2]} alt="" loading="lazy" />}
 						</div>
 						<div class="al-photo al-mid">
-							{album.photos[1] && <img src={album.photos[1].url} alt="" loading="lazy" />}
+							{album.data.photos[1] && <Image src={album.data.photos[1]} alt="" loading="lazy" />}
 						</div>
 						<div class="al-photo al-front">
-							<img src={album.cover} alt={album.title} loading="lazy" />
-							<span class="al-count">{album.photos.length} 张照片</span>
+							<Image src={album.data.cover} alt={album.data.title} loading="lazy" />
+							<span class="al-count">{album.data.photos.length} 张照片</span>
 						</div>
 					</div>
 					<div class="al-meta">
-						<h2>{album.title}</h2>
-						<span class="al-date">{album.date}</span>
-						<p>{album.description}</p>
+						<h2>{album.data.title}</h2>
+						<span class="al-date">{album.data.createdAt}</span>
+						<p>{album.data.description}</p>
 					</div>
 				</button>
 			))
@@ -387,7 +400,7 @@ import { albums } from '../data/albums';
 	}
 </style>
 
-<script define:vars={{ albums }}>
+<script define:vars={{ albums: plainAlbums }}>
 	const albumView = document.getElementById('albumView');
 	const albumDetail = document.getElementById('albumDetail');
 	const photoWall = document.getElementById('photoWall');
@@ -411,9 +424,7 @@ import { albums } from '../data/albums';
 		photoWall.innerHTML = album.photos
 			.map(
 				(p, i) =>
-					`<figure class="pw-item" data-index="${i}"><img src="${esc(p.url)}" alt="${esc(p.caption || '照片')}" loading="lazy" />${
-						p.caption ? `<figcaption>${esc(p.caption)}</figcaption>` : ''
-					}</figure>`
+					`<figure class="pw-item" data-index="${i}"><img src="${esc(p)}" alt="照片" loading="lazy" /></figure>`
 			)
 			.join('');
 		albumView.hidden = true;
@@ -430,10 +441,10 @@ import { albums } from '../data/albums';
 		lbIndex = index;
 		const p = currentPhotos[index];
 		if (!p) return;
-		lbImg.src = p.url;
-		lbImg.alt = p.caption || '照片';
-		lbCaption.textContent = p.caption || '';
-		lbCaption.hidden = !p.caption;
+		lbImg.src = p;
+		lbImg.alt = '照片';
+		lbCaption.textContent = '';
+		lbCaption.hidden = true;
 		lightbox.hidden = false;
 	}
 

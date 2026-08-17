@@ -37,24 +37,6 @@ TARGETS = {
         ),
         "export": "export const projectsData: Project[] = ",
     },
-    "albums": {
-        "file": os.path.join(DATA_DIR, "albums.ts"),
-        "header": (
-            "export interface Photo {\n"
-            "\turl: string;\n"
-            "\tcaption?: string;\n"
-            "}\n"
-            "export interface Album {\n"
-            "\tid: string;\n"
-            "\ttitle: string;\n"
-            "\tdescription: string;\n"
-            "\tcover: string;\n"
-            "\tdate: string;\n"
-            "\tphotos: Photo[];\n"
-            "}\n\n"
-        ),
-        "export": "export const albums: Album[] = ",
-    },
 }
 
 TS_RE = re.compile(r"export const \w+: [^=]+= (\[[\s\S]*\]);")
@@ -89,7 +71,7 @@ async def sync_data(request: Request):
 
     target = str(payload.get("target", ""))
     if target not in TARGETS:
-        return {"success": False, "message": "未知的数据类型，可选: friends / projects / albums"}
+        return {"success": False, "message": "未知的数据类型，可选: friends / projects"}
 
     items = payload.get("items", [])
     if not isinstance(items, list):
