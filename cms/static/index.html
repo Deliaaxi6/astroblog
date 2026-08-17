@@ -1,9 +1,12 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="zh-CN" data-theme="dark">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>纸上拾光 · 管理台</title>
+<script>
+  (() => { try { document.documentElement.setAttribute('data-theme', localStorage.getItem('theme') || 'dark'); } catch (e) {} })();
+</script>
 <style>
 :root {
   --paper:#f4f3ef; --sheet:#fcfbf6; --sheet-2:#f6f4ec;
@@ -16,6 +19,37 @@
   --mono:Consolas,Menlo,monospace;
   --serif:Georgia,'Noto Serif SC','Source Han Serif SC','Songti SC','SimSun',serif;
   --sans:'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif;
+}
+[data-theme='dark'] {
+  --paper:#14151a; --sheet:rgba(28,29,36,.82); --sheet-2:rgba(35,36,44,.72);
+  --line:rgba(230,228,221,.14); --line-strong:rgba(230,228,221,.28);
+  --ink:#e6e4dd; --sub:#b0b0bc; --mute:#6f7080;
+  --hi:#b3a02e; --hi-deep:#c9b432; --hi-soft:rgba(179,160,46,.16);
+  --seal:#d05a50; --seal-soft:rgba(208,90,80,.14);
+  --blue:#7fa3c9; --blue-soft:rgba(127,163,201,.16);
+  --ok:#7fae6e;
+}
+[data-theme='dark'] body {
+  background-image:radial-gradient(1200px 700px at 80% -10%, rgba(127,163,201,.14), transparent 60%),
+                   radial-gradient(900px 600px at -10% 110%, rgba(208,90,80,.10), transparent 55%),
+                   linear-gradient(rgba(230,228,221,.025) 1px, transparent 1px),
+                   linear-gradient(90deg, rgba(230,228,221,.025) 1px, transparent 1px);
+}
+[data-theme='dark'] body::before { border-left-color:rgba(230,228,221,.12); }
+[data-theme='dark'] .topbar,
+[data-theme='dark'] .side-profile,
+[data-theme='dark'] .side-nav,
+[data-theme='dark'] .sheet,
+[data-theme='dark'] .list-item,
+[data-theme='dark'] .drop,
+[data-theme='dark'] .opbox-btn {
+  -webkit-backdrop-filter:blur(12px); backdrop-filter:blur(12px);
+  box-shadow:0 2px 10px rgba(0,0,0,.25);
+}
+[data-theme='dark'] .md-preview pre { background:rgba(255,255,255,.04); border-color:var(--line); }
+[data-theme='dark'] .md-preview code { background:rgba(255,255,255,.06); }
+[data-theme='dark'] input.field, [data-theme='dark'] textarea.field, [data-theme='dark'] .code {
+  background:rgba(0,0,0,.22); color:var(--ink);
 }
 * { margin:0; padding:0; box-sizing:border-box; }
 body {
@@ -426,6 +460,7 @@ button { font-family:inherit; }
   <header class="topbar">
     <h1 class="topbar-title" id="topbarTitle">档案总览 <span class="no" id="topbarNo">FILE / OVERVIEW</span></h1>
     <div class="topbar-actions">
+      <button class="opbox-btn" id="themeBtn" title="切换深浅主题" onclick="toggleTheme()">☾</button>
       <div class="opbox">
         <button class="opbox-btn" id="opBoxBtn" title="待同步操作">待办<span class="reddot ping" id="opDot" style="display:none">0</span></button>
         <div class="opbox-drop" id="opBoxDrop">
@@ -520,7 +555,10 @@ button { font-family:inherit; }
         <div class="sheet" id="momentListCard">
           <div class="sheet-head">
             <h2>说说 <span class="no">FILE / MOMENTS</span></h2>
-            <button class="btn btn-hi btn-sm" onclick="newMoment()">＋ 写新说说</button>
+            <div>
+              <button class="btn btn-ghost btn-sm" onclick="openPreview('/timeline')">预览时间链</button>
+              <button class="btn btn-hi btn-sm" onclick="newMoment()">＋ 写新说说</button>
+            </div>
           </div>
           <div id="momentList"><div class="empty">加载中…</div></div>
         </div>
@@ -591,6 +629,37 @@ button { font-family:inherit; }
     </main>
   </div>
 </div>
+
+<dialog id="previewDialog">
+  <div class="preview-head">
+    <h3 id="previewTitle">预览</h3>
+    <div>
+      <button class="btn btn-ghost btn-sm" id="previewOpen">新窗口打开</button>
+      <button class="btn btn-seal btn-sm" onclick="document.getElementById('previewDialog').close()">关闭</button>
+    </div>
+  </div>
+  <iframe id="previewFrame" src="about:blank"></iframe>
+</dialog>
+
+<style>
+  #previewDialog {
+    width: min(1280px, 94vw);
+    height: min(860px, 92vh);
+    padding: 0;
+    border: none;
+    border-radius: 14px;
+    background: #faf8f2;
+    box-shadow: 0 18px 60px rgba(20, 30, 40, 0.28);
+    overflow: hidden;
+  }
+  #previewDialog::backdrop { background: rgba(15, 22, 30, 0.55); backdrop-filter: blur(3px); }
+  #previewDialog .preview-head {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 10px 14px; border-bottom: 1px solid var(--line);
+  }
+  #previewDialog h3 { margin: 0; font-size: 14px; font-weight: 700; }
+  #previewFrame { width: 100%; height: calc(100% - 47px); border: none; background: #fff; }
+</style>
 
 <script src="/admin.js"></script>
 </body>
