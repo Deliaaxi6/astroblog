@@ -31,8 +31,8 @@ TARGETS = {
             "\tname: string;\n"
             "\tdescription: string;\n"
             "\ticon: string;\n"
-            "\turl: string;\n"
-            "\tdate: string;\n"
+            "\tgithubUrl: string;\n"
+            "\ttags: string[];\n"
             "}\n\n"
         ),
         "export": "export const projectsData: Project[] = ",
