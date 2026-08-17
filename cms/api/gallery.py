@@ -152,3 +152,82 @@ async def upload_photos(album_id: str, files: list[UploadFile] = File(...)):
         "saved": saved,
         "skipped": skipped,
     }
+
+
+def _read_album(album_id: str):
+    """读取单个相册 frontmatter，不存在返回 None"""
+    md_path = _album_md_path(album_id)
+    if not os.path.exists(md_path):
+        return None
+    try:
+        with open(md_path, "r", encoding="utf-8") as f:
+            raw = f.read()
+        fm, _ = _parse_frontmatter(raw)
+        return fm
+    except Exception:
+        return None
+
+
+@router.get("/albums")
+async def list_albums():
+    """列出全部相册（含封面/照片数量）"""
+    albums = []
+    if os.path.isdir(ALBUMS_DIR):
+        for filename in sorted(os.listdir(ALBUMS_DIR), reverse=True):
+            if not filename.endswith(".md"):
+                continue
+            album_id = filename[:-3]
+            fm = _read_album(album_id)
+            if fm is None:
+                continue
+            photos = list(fm.get("photos") or [])
+            albums.append({
+                "id": album_id,
+                "title": fm.get("title", ""),
+                "description": fm.get("description", "") or "",
+                "cover": fm.get("cover", "") or "",
+                "createdAt": fm.get("createdAt", "") or "",
+                "photos": photos,
+                "photoCount": len(photos),
+            })
+    return {"success": True, "albums": albums, "count": len(albums)}
+
+
+@router.put("/albums/{album_id}")
+async def update_album(album_id: str, title: str = Form(...), description: str = Form("")):
+    """编辑相册标题/描述"""
+    md_path = _album_md_path(album_id)
+    if not os.path.exists(md_path):
+        return {"success": False, "message": "相册不存在"}
+    title = title.strip()
+    if not title:
+        return {"success": False, "message": "相册名称不能为空"}
+    try:
+        with open(md_path, "r", encoding="utf-8") as f:
+            raw = f.read()
+        fm, body = _parse_frontmatter(raw)
+        fm["title"] = title
+        fm["description"] = description.strip() or None
+        with open(md_path, "w", encoding="utf-8") as f:
+            f.write(_dump_album_fm(fm) + "\n" + body.strip() + ("\n" if body.strip() else ""))
+    except Exception as e:
+        return {"success": False, "message": f"保存失败: {e}"}
+    return {"success": True, "message": f"已保存：{title}"}
+
+
+@router.delete("/albums/{album_id}")
+async def delete_album(album_id: str):
+    """删除相册（md + 目录）"""
+    md_path = _album_md_path(album_id)
+    album_dir = os.path.join(ALBUMS_DIR, album_id)
+    if not os.path.exists(md_path) and not os.path.isdir(album_dir):
+        return {"success": False, "message": "相册不存在"}
+    try:
+        if os.path.exists(md_path):
+            os.remove(md_path)
+        if os.path.isdir(album_dir):
+            import shutil
+            shutil.rmtree(album_dir, ignore_errors=True)
+    except Exception as e:
+        return {"success": False, "message": f"删除失败: {e}"}
+    return {"success": True, "message": f"已删除相册：{album_id}"}
