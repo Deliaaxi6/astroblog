@@ -2,6 +2,7 @@
 import { getCollection } from 'astro:content';
 import Layout from '../../layouts/Layout.astro';
 import { readingTime } from '../../lib/reading';
+import { withBase } from '../../lib/site';
 
 const posts = (await getCollection('blog', ({ data }) => !data.draft)).sort(
 	(a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf()
@@ -21,9 +22,9 @@ const formatter = new Intl.DateTimeFormat('zh-CN', {
 	</section>
 	<div class="post-list">
 		{posts.map((post) => (
-			<a href={`/blog/${post.id}`} class="post-card glass">
+			<a href={withBase(`/blog/${post.id}`)} class="post-card glass">
 				{post.data.cover && (
-					<img class="post-thumb" src={post.data.cover} alt={post.data.title} loading="lazy" />
+					<img class="post-thumb" src={withBase(post.data.cover)} alt={post.data.title} loading="lazy" />
 				)}
 				<div class="post-body">
 					<h2>{post.data.title}</h2>

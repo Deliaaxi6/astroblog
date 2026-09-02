@@ -7,18 +7,17 @@ interface Props {
 
 const { pageId } = Astro.props;
 const cfg = site.gitalk;
-const enabled = !!(cfg.clientID && cfg.repo && cfg.owner && cfg.admin.length);
+const enabled = !!(cfg.clientID && cfg.clientSecret && cfg.repo && cfg.owner && cfg.admin.length);
 ---
 
 <section class="comments glass" id="comments">
-	<h3 class="cm-title">💬 评论区</h3>
+	<h3 class="cm-title">评论区</h3>
 	{
 		enabled ? (
 			<div id="gitalk-container"></div>
 		) : (
 			<p class="cm-tip">
-				评论功能待配置：需在 GitHub 创建 OAuth App，并在
-				<code>src/lib/site.ts</code> 填入 clientID / clientSecret / repo / owner / admin。
+					评论功能已停用：OAuth Secret 不应写入前端源码。启用前请接入服务端 OAuth 代理。
 			</p>
 		)
 	}

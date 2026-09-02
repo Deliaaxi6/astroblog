@@ -5,15 +5,25 @@ interface Props {
 	cover?: string;
 }
 
+import Background from '../components/Background.astro';
+import { site as siteConfig, withBase } from '../lib/site';
+import '../styles/global.css';
+
 const { title = '纸上拾光', description = '用 Astro 构建的个人博客', cover } = Astro.props;
-const site = import.meta.env.SITE || 'http://localhost:4321';
+const site = siteConfig.url;
 const coverUrl = cover
 	? cover.startsWith('http')
 		? cover
-		: new URL(cover, site).href
+		: new URL(withBase(cover), site).href
 	: undefined;
-import Background from '../components/Background.astro';
-import '../styles/global.css';
+const homePath = withBase('/');
+const blogPath = withBase('/blog');
+const momentsPath = withBase('/moments');
+const photowallPath = withBase('/photowall');
+const friendsPath = withBase('/friends');
+const projectsPath = withBase('/projects');
+const timelinePath = withBase('/timeline');
+const aboutPath = withBase('/about');
 ---
 
 <!doctype html>
@@ -64,33 +74,33 @@ import '../styles/global.css';
 			})();
 		</script>
 	</head>
-	<body class:list={{ home: Astro.url.pathname === '/' }}>
+	<body class:list={{ home: Astro.url.pathname === homePath }}>
 		<Background />
 		<header id="navbar">
-			<a class="brand" href="/"><span class="mark"></span>纸上拾光</a>
+			<a class="brand" href={homePath}><span class="mark"></span>纸上拾光</a>
 			<nav class="nav-links">
-				<a href="/" class:list={{ active: Astro.url.pathname === '/' }}>首页</a>
+				<a href={homePath} class:list={{ active: Astro.url.pathname === homePath }}>首页</a>
 				<a
-					href="/blog"
-					class:list={{ active: Astro.url.pathname.startsWith('/blog') }}>文章</a>
+					href={blogPath}
+					class:list={{ active: Astro.url.pathname.startsWith(blogPath) }}>文章</a>
 				<a
-					href="/moments"
-					class:list={{ active: Astro.url.pathname.startsWith('/moments') }}>说说</a>
+					href={momentsPath}
+					class:list={{ active: Astro.url.pathname.startsWith(momentsPath) }}>说说</a>
 				<a
-					href="/photowall"
-					class:list={{ active: Astro.url.pathname.startsWith('/photowall') }}>画廊</a>
+					href={photowallPath}
+					class:list={{ active: Astro.url.pathname.startsWith(photowallPath) }}>画廊</a>
 				<a
-					href="/friends"
-					class:list={{ active: Astro.url.pathname.startsWith('/friends') }}>友链</a>
+					href={friendsPath}
+					class:list={{ active: Astro.url.pathname.startsWith(friendsPath) }}>友链</a>
 				<a
-					href="/projects"
-					class:list={{ active: Astro.url.pathname.startsWith('/projects') }}>项目</a>
+					href={projectsPath}
+					class:list={{ active: Astro.url.pathname.startsWith(projectsPath) }}>项目</a>
 				<a
-					href="/timeline"
-					class:list={{ active: Astro.url.pathname.startsWith('/timeline') }}>归档</a>
+					href={timelinePath}
+					class:list={{ active: Astro.url.pathname.startsWith(timelinePath) }}>归档</a>
 				<a
-					href="/about"
-					class:list={{ active: Astro.url.pathname.startsWith('/about') }}>关于</a>
+					href={aboutPath}
+					class:list={{ active: Astro.url.pathname.startsWith(aboutPath) }}>关于</a>
 			</nav>
 		</header>
 		<main class="container">

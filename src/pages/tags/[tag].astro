@@ -1,6 +1,7 @@
 ---
 import { getCollection } from 'astro:content';
 import Layout from '../../layouts/Layout.astro';
+import { withBase } from '../../lib/site';
 
 export async function getStaticPaths() {
 	const posts = await getCollection('blog', ({ data }) => !data.draft);
@@ -20,7 +21,7 @@ const formatter = new Intl.DateTimeFormat('zh-CN', { year: 'numeric', month: '2-
 
 <Layout title={`#${tag} · 标签`} description={`标签 #${tag} 下的全部文章。`}>
 	<section class="page-head">
-		<a href="/tags" class="back-link">← 全部标签</a>
+		<a href={withBase('/tags')} class="back-link">← 全部标签</a>
 		<h1><span class="hash">#</span>{tag}</h1>
 		<p class="page-sub">共 {posts.length} 篇文章</p>
 	</section>
@@ -28,8 +29,8 @@ const formatter = new Intl.DateTimeFormat('zh-CN', { year: 'numeric', month: '2-
 	<div class="post-list">
 		{
 			posts.map((post) => (
-				<a href={`/blog/${post.id}`} class="post-card glass">
-					{post.data.cover && <img class="post-thumb" src={post.data.cover} alt={post.data.title} loading="lazy" />}
+				<a href={withBase(`/blog/${post.id}`)} class="post-card glass">
+					{post.data.cover && <img class="post-thumb" src={withBase(post.data.cover)} alt={post.data.title} loading="lazy" />}
 					<div class="post-body">
 						<h2>{post.data.title}</h2>
 						<div class="post-meta">

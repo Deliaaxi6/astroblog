@@ -1,7 +1,8 @@
 import type { APIContext } from 'astro';
 import { getCollection } from 'astro:content';
+import { site, withBase } from '../lib/site';
 
-const site = import.meta.env.SITE || 'http://localhost:4321';
+const absoluteUrl = (path: string) => new URL(withBase(path), site.url).href;
 
 function escapeXml(s: string): string {
 	return s.replace(/[<>&'"]/g, (c) => {
@@ -29,7 +30,7 @@ export async function GET(context: APIContext) {
 
 	const items = posts
 		.map((post) => {
-			const link = `${site}/blog/${post.id}/`;
+			const link = absoluteUrl(`/blog/${post.id}/`);
 			return `  <item>
     <title>${escapeXml(post.data.title)}</title>
     <link>${link}</link>
@@ -48,10 +49,10 @@ export async function GET(context: APIContext) {
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
   <channel>
     <title>我的博客</title>
-    <link>${site}</link>
+		<link>${site.url}</link>
     <description>用 Astro 构建的个人博客</description>
     <language>zh-cn</language>
-    <atom:link href="${site}/rss.xml" rel="self" type="application/rss+xml"/>
+		<atom:link href="${absoluteUrl('/rss.xml')}" rel="self" type="application/rss+xml"/>
 ${items}
   </channel>
 </rss>`;

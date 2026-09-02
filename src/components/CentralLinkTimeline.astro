@@ -7,6 +7,8 @@
  * 监听 articles 属性变化自动刷新（外部传入筛选后的列表即自动重渲染）。
  */
 
+import { withBase } from '../lib/site';
+
 export interface Article {
 	id: string;
 	title: string;
@@ -47,6 +49,7 @@ const fmt = (iso: string): string => {
 	viewMode === 'timeline' ? (
 		<central-link-timeline
 			class="clt-root"
+			data-base={withBase('/')}
 			data-starfield={starfield ? 'on' : 'off'}
 			articles={JSON.stringify(sorted)}
 		>
@@ -57,10 +60,10 @@ const fmt = (iso: string): string => {
 					sorted.map((a, i) => (
 						<article class:list={['clt-item', i % 2 === 0 ? 'clt-left' : 'clt-right']}>
 							<span class="clt-dot" aria-hidden="true"></span>
-							<a href={`/blog/${a.id}`} class="clt-card">
+							<a href={withBase(`/blog/${a.id}`)} class="clt-card">
 								{a.cover && (
 									<div class="clt-cover">
-										<img src={a.cover} alt={a.title} loading="lazy" />
+									<img src={withBase(a.cover)} alt={a.title} loading="lazy" />
 									</div>
 								)}
 								<div class="clt-body">
@@ -83,7 +86,7 @@ const fmt = (iso: string): string => {
 			<p class="clt-empty" hidden>没有匹配的档案</p>
 		</central-link-timeline>
 	) : (
-		<central-link-timeline class="clt-root" data-view="grid" hidden></central-link-timeline>
+		<central-link-timeline class="clt-root" data-base={withBase('/')} data-view="grid" hidden></central-link-timeline>
 	)
 }
 
@@ -352,11 +355,16 @@ const fmt = (iso: string): string => {
 		return Number.isNaN(d.valueOf()) ? iso : dateFmt.format(d);
 	};
 
-	const itemHtml = (a: Article, i: number): string => `
+	const withClientBase = (base: string, path: string): string => {
+		if (/^[a-z][a-z\d+.-]*:/i.test(path) || path.startsWith('//') || path.startsWith('#')) return path;
+		return `${base.replace(/\/$/, '')}/${path.replace(/^\//, '')}`;
+	};
+
+	const itemHtml = (a: Article, i: number, base: string): string => `
 		<article class="clt-item ${i % 2 === 0 ? 'clt-left' : 'clt-right'}">
 			<span class="clt-dot" aria-hidden="true"></span>
-			<a href="${escapeHtml('/blog/' + a.id)}" class="clt-card">
-				${a.cover ? `<div class="clt-cover"><img src="${escapeHtml(a.cover)}" alt="${escapeHtml(a.title)}" loading="lazy" /></div>` : ''}
+			<a href="${escapeHtml(withClientBase(base, '/blog/' + a.id))}" class="clt-card">
+				${a.cover ? `<div class="clt-cover"><img src="${escapeHtml(withClientBase(base, a.cover))}" alt="${escapeHtml(a.title)}" loading="lazy" /></div>` : ''}
 				<div class="clt-body">
 					<time class="clt-time" datetime="${escapeHtml(a.publishAt)}">${escapeHtml(fmtDate(a.publishAt))}</time>
 					<h3 class="clt-title">${escapeHtml(a.title)}</h3>
@@ -479,7 +487,8 @@ const fmt = (iso: string): string => {
 			empty.hidden = articles.length > 0;
 			list.hidden = articles.length === 0;
 			if (articles.length) {
-				list.innerHTML = articles.map(itemHtml).join('');
+				const base = this.dataset.base || '/';
+				list.innerHTML = articles.map((article, index) => itemHtml(article, index, base)).join('');
 			}
 		}
 	}

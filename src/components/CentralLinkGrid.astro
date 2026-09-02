@@ -7,6 +7,7 @@
  */
 
 import type { Article } from './CentralLinkTimeline.astro';
+import { withBase } from '../lib/site';
 
 interface Props {
 	/** 外部传入的文章列表（可按关键词/标签筛选后传入，组件自动刷新） */
@@ -34,13 +35,13 @@ const fmt = (iso: string): string => {
 
 {
 	viewMode === 'grid' ? (
-		<central-link-grid class="cg-root" articles={JSON.stringify(sorted)}>
+		<central-link-grid class="cg-root" data-base={withBase('/')} articles={JSON.stringify(sorted)}>
 			<div class="cg-grid">
 				{
 					sorted.map((a) => (
-						<a href={`/blog/${a.id}`} class="cg-card">
+						<a href={withBase(`/blog/${a.id}`)} class="cg-card">
 							<div class:list={['cg-cover', !a.cover && 'cg-cover-fallback']}>
-								{a.cover && <img src={a.cover} alt={a.title} loading="lazy" />}
+								{a.cover && <img src={withBase(a.cover)} alt={a.title} loading="lazy" />}
 								<span class="cg-date">{fmt(a.publishAt)}</span>
 							</div>
 							<div class="cg-body">
@@ -61,7 +62,7 @@ const fmt = (iso: string): string => {
 			<p class="cg-empty" hidden>没有匹配的档案</p>
 		</central-link-grid>
 	) : (
-		<central-link-grid class="cg-root" data-view="timeline" hidden></central-link-grid>
+		<central-link-grid class="cg-root" data-base={withBase('/')} data-view="timeline" hidden></central-link-grid>
 	)
 }
 
@@ -257,10 +258,15 @@ const fmt = (iso: string): string => {
 		return Number.isNaN(d.valueOf()) ? iso : dateFmt.format(d);
 	};
 
-	const cardHtml = (a: GridArticle): string => `
-		<a href="${escapeHtml('/blog/' + a.id)}" class="cg-card">
+	const withClientBase = (base: string, path: string): string => {
+		if (/^[a-z][a-z\d+.-]*:/i.test(path) || path.startsWith('//') || path.startsWith('#')) return path;
+		return `${base.replace(/\/$/, '')}/${path.replace(/^\//, '')}`;
+	};
+
+	const cardHtml = (a: GridArticle, base: string): string => `
+		<a href="${escapeHtml(withClientBase(base, '/blog/' + a.id))}" class="cg-card">
 			<div class="cg-cover ${a.cover ? '' : 'cg-cover-fallback'}">
-				${a.cover ? `<img src="${escapeHtml(a.cover)}" alt="${escapeHtml(a.title)}" loading="lazy" />` : ''}
+				${a.cover ? `<img src="${escapeHtml(withClientBase(base, a.cover))}" alt="${escapeHtml(a.title)}" loading="lazy" />` : ''}
 				<span class="cg-date">${escapeHtml(fmtDate(a.publishAt))}</span>
 			</div>
 			<div class="cg-body">
@@ -298,7 +304,8 @@ const fmt = (iso: string): string => {
 			empty.hidden = articles.length > 0;
 			grid.hidden = articles.length === 0;
 			if (articles.length) {
-				grid.innerHTML = articles.map(cardHtml).join('');
+				const base = this.dataset.base || '/';
+				grid.innerHTML = articles.map((article) => cardHtml(article, base)).join('');
 			}
 		}
 	}

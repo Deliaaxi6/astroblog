@@ -1,8 +1,8 @@
 ---
 import { getCollection } from 'astro:content';
 import Layout from '../layouts/Layout.astro';
-import { site } from '../lib/site';
-import { musicIds } from '../data/music';
+import { withBase } from '../lib/site';
+import { musicPlaylist } from '../data/music';
 
 const posts = (await getCollection('blog', ({ data }) => !data.draft)).sort(
 	(a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf()
@@ -49,8 +49,9 @@ const archives = posts.reduce((acc, p) => {
 }, []);
 
 const buildDate = new Date().toISOString().slice(0, 10);
-const buildStamp = '2026-08-14T00:00:00';
 const lead = posts[0] ?? null;
+const heroImage = withBase('/06637e3637aa50466b3ed9b74ad08aed.jpg');
+const pagefindScript = withBase('/pagefind/pagefind.js');
 ---
 
 <Layout title="纸上拾光">
@@ -85,7 +86,7 @@ const lead = posts[0] ?? null;
 
 	<!-- 全屏开屏（hero，替代 masthead） -->
 	<section class="hero">
-		<div class="hero-bg">
+		<div class="hero-bg" style={`background-image: url('${heroImage}')`}>
 			<div class="hero-overlay"></div>
 		</div>
 		<div class="hero-inner">
@@ -120,7 +121,7 @@ const lead = posts[0] ?? null;
 						{formatter.format(lead.data.pubDate)}
 						{lead.data.tags?.length ? ` · ${lead.data.tags.join(' / ')}` : ''}
 					</span>
-					<a class="lead-link" href={`/blog/${lead.id}`}>展开卷宗 →</a>
+					<a class="lead-link" href={withBase(`/blog/${lead.id}`)}>展开卷宗 →</a>
 				</article>
 			) : (
 				<article class="lead">
@@ -133,7 +134,7 @@ const lead = posts[0] ?? null;
 			<section class="posts">
 				<h3 class="sec-title">— 新收文章 —</h3>
 				{posts.slice(1).map((p, i) => (
-					<a class="post" href={`/blog/${p.id}`}>
+					<a class="post" href={withBase(`/blog/${p.id}`)}>
 						<span class="post-no">{String(i + 2).padStart(2, '0')}</span>
 						<span class="post-tt">{p.data.title}</span>
 						<span class="post-dt">{formatter.format(p.data.pubDate)}</span>
@@ -149,7 +150,7 @@ const lead = posts[0] ?? null;
 					<div class="note-body">
 						<blockquote>{latestChatter.title}</blockquote>
 						<cite>
-							{latestChatter.date} · <a href="/moments">更多手记 →</a>
+							{latestChatter.date} · <a href={withBase('/moments')}>更多手记 →</a>
 						</cite>
 					</div>
 				</section>
@@ -173,7 +174,7 @@ const lead = posts[0] ?? null;
 				<ul class="archive">
 					{archives.map((a) => (
 						<li>
-							<a href="/timeline">
+							<a href={withBase('/timeline')}>
 								<span>{a.key}</span>
 								<span class="cnt">{a.count}</span>
 							</a>
@@ -185,7 +186,7 @@ const lead = posts[0] ?? null;
 			<section class="side-sec">
 				<h4 class="side-title">关于</h4>
 				<p class="about-text">在代码、学术与日常之间穿梭的记录。站名暂定「纸上拾光」。</p>
-				<a class="about-link" href="/about">关于本站 →</a>
+				<a class="about-link" href={withBase('/about')}>关于本站 →</a>
 			</section>
 		</aside>
 	</div>
@@ -235,7 +236,6 @@ const lead = posts[0] ?? null;
 		.hero-bg {
 			position: fixed;
 			inset: 0;
-			background-image: url('/06637e3637aa50466b3ed9b74ad08aed.jpg');
 			background-size: cover;
 			background-position: center;
 			animation: heroBgShow 1.5s ease-out backwards;
@@ -778,7 +778,7 @@ const lead = posts[0] ?? null;
 		}
 	</style>
 
-	<script define:vars={{ searchData, buildStamp, musicIds }}>
+	<script define:vars={{ searchData, musicPlaylist, pagefindScript }}>
 		/* ============ 打字机标语 ============ */
 		(function () {
 			var phrases = ['在代码、学术与日常之间穿梭的记录…', '纸上拾光 · 存档日常点滴', 'Build in public, learn in public'];
@@ -888,7 +888,7 @@ const lead = posts[0] ?? null;
 			}
 			window.__pfSearch = runSearch;
 			var s = document.createElement('script');
-			s.src = '/pagefind/pagefind.js';
+			s.src = pagefindScript;
 			s.onload = function () {
 				runSearch(q, box);
 			};
@@ -961,7 +961,7 @@ const lead = posts[0] ?? null;
 			doSearch(e.target.value);
 		});
 
-		/* ============ 播放器（真实播放，数据来自 CMS /api/music） ============ */
+		/* ============ 播放器（歌单由 CMS 写入并随静态站点发布） ============ */
 		var audio = new Audio();
 		var cur = 0,
 			playing = false,
@@ -969,19 +969,6 @@ const lead = posts[0] ?? null;
 		function fmt(s) {
 			s = Math.max(0, Math.floor(s));
 			return String(Math.floor(s / 60)).padStart(2, '0') + ':' + String(s % 60).padStart(2, '0');
-		}
-		function parseLrc(text) {
-			var out = [];
-			String(text || '').split('\n').forEach(function (line) {
-				var times = [],
-					m,
-					re = /\[(\d{1,2}):(\d{1,2})(?:[.:](\d{1,3}))?\]/g;
-				while ((m = re.exec(line))) times.push(+m[1] * 60 + +m[2] + (+(m[3] || 0)) / 1000);
-				var rest = line.replace(re, '').trim();
-				if (times.length && rest) times.forEach(function (t) { out.push({ time: t, text: rest }); });
-			});
-			out.sort(function (a, b) { return a.time - b.time; });
-			return out;
 		}
 		function setPlayUi(on) {
 			document.getElementById('disc').classList.toggle('paused', !on);
@@ -1079,58 +1066,31 @@ const lead = posts[0] ?? null;
 			var s = playlist[cur];
 			if (s) {
 				showToast('🎵 ' + s.title + ' - ' + s.artist);
-			} else if (musicFailed) {
-				showToast('🔄 音乐服务暂不可达，正在重试…');
-				retryMusic();
 			} else {
 				showToast('🎵 音乐服务未配置');
 			}
 		});
-		var musicFailed = false;
 		function initMusic() {
-			var ids = (window.musicIds || []).filter(Boolean);
-			if (!ids.length) {
+			playlist = (musicPlaylist || []).filter(function (s) { return s && s.url; }).map(function (s) {
+				return {
+					title: s.name,
+					artist: s.artist,
+					cover: s.cover,
+					url: s.url,
+				};
+			});
+			if (!playlist.length) {
 				document.getElementById('playerLyric').textContent = '音乐未配置（管理台歌单为空）';
 				return;
 			}
-			document.getElementById('playerLyric').textContent = '正在连接云端...';
-			fetch('/api/music?ids=' + ids.join(','))
-				.then(function (r) { return r.json(); })
-				.then(function (list) {
-					playlist = (list || []).filter(function (s) { return s && s.url; }).map(function (s) {
-						return {
-							title: s.name,
-							artist: s.artist,
-							cover: s.cover,
-							url: s.url,
-							lyrics: parseLrc(s.lrc),
-						};
-					});
-					if (!playlist.length) {
-						musicFailed = true;
-						document.getElementById('playerLyric').textContent = '云端链路受阻（点击卡片重试）';
-						return;
-					}
-					musicFailed = false;
-					document.getElementById('playerLyric').textContent = '♪ 第 1 / ' + playlist.length + ' 首';
-					loadSong();
-					playing = true;
-					setPlayUi(true);
-					audio.play().catch(function () {
-						playing = false;
-						setPlayUi(false);
-					});
-				})
-				.catch(function () {
-					musicFailed = true;
-					document.getElementById('playerLyric').textContent = '音乐服务不可达（点击卡片重试）';
-				});
-		}
-		function retryMusic() {
-			musicFailed = false;
-			playlist = [];
-			cur = 0;
-			initMusic();
+			document.getElementById('playerLyric').textContent = '♪ 第 1 / ' + playlist.length + ' 首';
+			loadSong();
+			playing = true;
+			setPlayUi(true);
+			audio.play().catch(function () {
+				playing = false;
+				setPlayUi(false);
+			});
 		}
 		initMusic();
 

@@ -1,6 +1,7 @@
 ---
 import { getCollection } from 'astro:content';
 import Layout from '../../layouts/Layout.astro';
+import { withBase } from '../../lib/site';
 
 const posts = await getCollection('blog', ({ data }) => !data.draft);
 
@@ -17,14 +18,14 @@ const maxCount = Math.max(1, ...tags.map((t) => t.count));
 <Layout title="标签" description="全部文章标签聚合。">
 	<section class="page-head">
 		<h1>标签聚合</h1>
-		<p class="page-sub">✳️ 共 {tags.length} 个标签 · 覆盖 {posts.length} 篇文章</p>
+		<p class="page-sub">共 {tags.length} 个标签 · 覆盖 {posts.length} 篇文章</p>
 	</section>
 
 	<div class="tag-cloud">
 		{
 			tags.map((tag) => (
 				<a
-					href={`/tags/${tag.name}`}
+					href={withBase(`/tags/${tag.name}`)}
 					class="tag-item"
 					style={`--size: ${0.95 + (tag.count / maxCount) * 0.9}; --op: ${0.55 + (tag.count / maxCount) * 0.45}`}
 				>

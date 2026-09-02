@@ -16,6 +16,7 @@
 
 import { Image } from 'astro:assets';
 import type { ImageMetadata } from 'astro';
+import { withBase } from '../lib/site';
 
 interface Props {
 	/** 图片：import 的模块（Astro 优化 WebP/懒加载）或 public 路径 / 外链 URL */
@@ -32,6 +33,7 @@ interface Props {
 const { src, alt, caption, lightbox = true, full = false } = Astro.props;
 
 const optimized = typeof src !== 'string';
+const imageSrc = typeof src === 'string' && src.startsWith('/') ? withBase(src) : src;
 ---
 
 <figure
@@ -42,7 +44,7 @@ const optimized = typeof src !== 'string';
 		optimized ? (
 			<Image src={src} alt={alt} loading="lazy" format="webp" class="af-img" />
 		) : (
-			<img src={src} alt={alt} loading="lazy" class="af-img" />
+			<img src={imageSrc} alt={alt} loading="lazy" class="af-img" />
 		)
 	}
 	{caption && <figcaption class="af-caption">{caption}</figcaption>}

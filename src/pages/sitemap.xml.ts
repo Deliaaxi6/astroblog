@@ -1,14 +1,26 @@
 import type { APIContext } from 'astro';
 import { getCollection } from 'astro:content';
+import { site, withBase } from '../lib/site';
 
-const site = import.meta.env.SITE || 'http://localhost:4321';
+const absoluteUrl = (path: string) => new URL(withBase(path), site.url).href;
 
 export async function GET(context: APIContext) {
 	const posts = (await getCollection('blog')).filter((post) => !post.data.draft);
 
-	const urls = ['', 'blog', 'about']
-		.map((path) => `${site}/${path}`)
-		.concat(posts.map((post) => `${site}/blog/${post.id}`));
+	const publicRoutes = [
+		'/',
+		'/blog',
+		'/moments',
+		'/photowall',
+		'/friends',
+		'/projects',
+		'/timeline',
+		'/about',
+		'/tags',
+	];
+	const urls = publicRoutes
+		.map(absoluteUrl)
+		.concat(posts.map((post) => absoluteUrl(`/blog/${post.id}`)));
 
 	const body = urls.map((url) => `  <url><loc>${url}</loc></url>`).join('\n');
 
