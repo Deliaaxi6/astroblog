@@ -146,6 +146,13 @@ def _sync_images_in_source(source_kind: str, src_text: str, base_dir: str, copie
         return text
     for start, end, src in sorted(refs, key=lambda x: -x[0]):
         cand = os.path.normpath(os.path.join(base_dir, src))
+        try:
+            if os.path.commonpath((os.path.abspath(base_dir), os.path.abspath(cand))) != os.path.abspath(base_dir):
+                skipped.append(f"[{source_kind}] 图片路径超出源目录: {src}")
+                continue
+        except ValueError:
+            skipped.append(f"[{source_kind}] 图片路径非法: {src}")
+            continue
         if not os.path.isfile(cand):
             skipped.append(f"[{source_kind}] 文件不存在: {src}")
             continue

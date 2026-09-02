@@ -160,12 +160,26 @@
 	const dialog = document.getElementById('gallery-create-dialog');
 	const form = document.getElementById('gallery-create-form');
 	const msg = document.getElementById('gal-msg');
+	const getCmsKey = () => {
+		let key = sessionStorage.getItem('cms_api_key') || '';
+		if (!key) {
+			key = (window.prompt('请输入 CMS_API_KEY') || '').trim();
+			if (key) sessionStorage.setItem('cms_api_key', key);
+		}
+		if (!key) throw new Error('未提供 CMS_API_KEY');
+		return key;
+	};
+	const cmsFetch = (path, init = {}) => {
+		const headers = new Headers(init.headers);
+		headers.set('X-CMS-API-Key', getCmsKey());
+		return fetch(CMS_BASE + path, { ...init, headers });
+	};
 
 	const waitBuild = () =>
 		new Promise((resolve) => {
 			const check = async () => {
 				try {
-					const r = await fetch(CMS_BASE + '/api/sync/status', {
+					const r = await cmsFetch('/api/sync/status', {
 						method: 'POST',
 						headers: { 'Content-Type': 'application/json' },
 						body: '{}',
@@ -196,11 +210,11 @@
 			fd.append('title', title.value.trim());
 			fd.append('description', document.getElementById('gal-desc').value.trim());
 			fd.append('cover', cover.files[0]);
-			const r = await fetch(CMS_BASE + '/api/gallery/albums', { method: 'POST', body: fd });
+			const r = await cmsFetch('/api/gallery/albums', { method: 'POST', body: fd });
 			const j = await r.json();
 			if (!j.success) throw new Error(j.message || '创建失败');
 			msg.textContent = '已创建，正在重建站点…';
-			await fetch(CMS_BASE + '/api/sync/rebuild', {
+			await cmsFetch('/api/sync/rebuild', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: '{}',

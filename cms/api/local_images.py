@@ -10,12 +10,13 @@ import time
 
 from fastapi import APIRouter, UploadFile, File
 
+from api.image_validation import ALLOWED_EXTENSIONS, validate_image_content
+
 router = APIRouter()
 
 BLOG_ROOT = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", ".."))
 PUBLIC_IMAGES_DIR = os.path.join(BLOG_ROOT, "public", "images")
 
-ALLOWED_EXT = {".jpg", ".jpeg", ".png", ".gif", ".webp", ".svg", ".avif"}
 MAX_SIZE = 10 * 1024 * 1024
 NAME_SAFE = re.compile(r"[^a-zA-Z0-9_.\-]")
 
@@ -24,13 +25,17 @@ NAME_SAFE = re.compile(r"[^a-zA-Z0-9_.\-]")
 async def upload_local(file: UploadFile = File(...)):
     original = file.filename or "image.png"
     ext = os.path.splitext(original)[1].lower()
-    if ext not in ALLOWED_EXT:
+    if ext not in ALLOWED_EXTENSIONS:
         return {"success": False, "message": f"不支持的图片类型: {ext or '(无扩展名)'}"}
-    data = await file.read()
+    data = await file.read(MAX_SIZE + 1)
     if not data:
         return {"success": False, "message": "空文件"}
     if len(data) > MAX_SIZE:
         return {"success": False, "message": "图片超过 10MB 限制"}
+
+    valid, message = validate_image_content(original, data)
+    if not valid:
+        return {"success": False, "message": message}
 
     os.makedirs(PUBLIC_IMAGES_DIR, exist_ok=True)
     base = NAME_SAFE.sub("_", os.path.splitext(original)[0])[:40] or "image"

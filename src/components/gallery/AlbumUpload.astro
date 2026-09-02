@@ -53,12 +53,26 @@ const { albumId } = Astro.props;
 	const pickBtn = document.getElementById('album-pick-btn');
 	const fileInput = document.getElementById('album-files');
 	const msg = document.getElementById('album-upload-msg');
+	const getCmsKey = () => {
+		let key = sessionStorage.getItem('cms_api_key') || '';
+		if (!key) {
+			key = (window.prompt('请输入 CMS_API_KEY') || '').trim();
+			if (key) sessionStorage.setItem('cms_api_key', key);
+		}
+		if (!key) throw new Error('未提供 CMS_API_KEY');
+		return key;
+	};
+	const cmsFetch = (path, init = {}) => {
+		const headers = new Headers(init.headers);
+		headers.set('X-CMS-API-Key', getCmsKey());
+		return fetch(CMS_BASE + path, { ...init, headers });
+	};
 
 	const waitBuild = () =>
 		new Promise((resolve) => {
 			const check = async () => {
 				try {
-					const r = await fetch(CMS_BASE + '/api/sync/status', {
+					const r = await cmsFetch('/api/sync/status', {
 						method: 'POST',
 						headers: { 'Content-Type': 'application/json' },
 						body: '{}',
@@ -83,14 +97,14 @@ const { albumId } = Astro.props;
 		try {
 			const fd = new FormData();
 			files.forEach((f) => fd.append('files', f));
-			const r = await fetch(`${CMS_BASE}/api/gallery/albums/${albumId}/photos`, {
+			const r = await cmsFetch(`/api/gallery/albums/${encodeURIComponent(albumId)}/photos`, {
 				method: 'POST',
 				body: fd,
 			});
 			const j = await r.json();
 			if (!j.success) throw new Error(j.message || '上传失败');
 			msg.textContent = j.message + '，正在重建站点…';
-			await fetch(CMS_BASE + '/api/sync/rebuild', {
+			await cmsFetch('/api/sync/rebuild', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: '{}',

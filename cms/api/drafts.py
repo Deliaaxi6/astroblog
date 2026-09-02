@@ -31,6 +31,11 @@ def _resolve_md_path(doc_type, doc_id):
     return os.path.join(POSTS_DIR, f"{doc_id}.md")
 
 
+def _safe_id(raw_id):
+    value = str(raw_id).replace(".md", "").replace(".json", "")
+    return value if ID_RE.fullmatch(value) else None
+
+
 @router.post("/save")
 async def save_draft(request: Request):
     try:
@@ -97,8 +102,12 @@ async def get_draft(request: Request):
     except Exception:
         return {"success": False, "message": "JSON 解析失败"}
 
-    raw_id = str(payload.get("id", "")).replace(".md", "")
+    raw_id = _safe_id(payload.get("id", ""))
+    if not raw_id:
+        return {"success": False, "message": "ID 非法"}
     doc_type = payload.get("type", "post")
+    if doc_type not in ("post", "chatter"):
+        return {"success": False, "message": "文档类型非法"}
 
     file_path = os.path.join(DRAFTS_DIR, f"{raw_id}.json")
     if os.path.exists(file_path):
@@ -153,7 +162,9 @@ async def delete_draft(request: Request):
     except Exception:
         return {"success": False, "message": "JSON 解析失败"}
 
-    raw_id = str(payload.get("id", "")).replace(".md", "").replace(".json", "")
+    raw_id = _safe_id(payload.get("id", ""))
+    if not raw_id:
+        return {"success": False, "message": "ID 非法"}
     possible_paths = [
         os.path.join(DRAFTS_DIR, f"{raw_id}.json"),
         os.path.join(POSTS_DIR, f"{raw_id}.md"),

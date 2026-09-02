@@ -1,6 +1,21 @@
 (() => {
   'use strict';
 
+  const cmsKey = sessionStorage.getItem('cms_api_key') || window.prompt('请输入 CMS_API_KEY');
+  if (!cmsKey) {
+    document.body.innerHTML = '<main style="padding:40px;font-family:sans-serif">未提供 CMS_API_KEY，管理台已停止。</main>';
+    return;
+  }
+  sessionStorage.setItem('cms_api_key', cmsKey);
+  const nativeFetch = window.fetch.bind(window);
+  window.fetch = (input, init = {}) => {
+    const url = typeof input === 'string' ? input : input.url;
+    if (!url.includes('/api/')) return nativeFetch(input, init);
+    const headers = new Headers(init.headers || (typeof input !== 'string' ? input.headers : undefined));
+    headers.set('X-CMS-API-Key', cmsKey);
+    return nativeFetch(input, { ...init, headers });
+  };
+
   const $ = (s) => document.querySelector(s);
   const $$ = (s) => document.querySelectorAll(s);
   const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -279,7 +294,16 @@
     if (id) {
       try {
         const j = await postJson('/api/posts/get', { id });
-        post = j.post || post;
+        const loaded = j.post || {};
+        post = {
+          id: loaded.id || id,
+          title: loaded.frontmatter?.title || '',
+          content: loaded.content || '',
+          tags: loaded.frontmatter?.tags || [],
+          date: String(loaded.frontmatter?.pubDate || nowDate()).slice(0, 10),
+          description: loaded.frontmatter?.description || '',
+          draft: Boolean(loaded.frontmatter?.draft),
+        };
       } catch (e) { setStatus('读取失败：' + e.message, 'err'); }
     }
     $('#postListCard').style.display = 'none';
@@ -368,21 +392,25 @@
     }
   }
   async function savePost(publish) {
+    const draft = publish ? false : $('#p-draft').checked;
     const payload = {
       id: $('#p-id').value.trim() || null,
-      title: $('#p-title').value.trim(),
       content: $('#p-content').value,
-      tags: $('#p-tags').value.split(/[,，]/).map((t) => t.trim()).filter(Boolean),
-      date: $('#p-date').value || nowDate(),
-      description: $('#p-desc').value.trim(),
-      draft: !publish && $('#p-draft').checked
+      frontmatter: {
+        title: $('#p-title').value.trim(),
+        tags: $('#p-tags').value.split(/[,，]/).map((t) => t.trim()).filter(Boolean),
+        pubDate: $('#p-date').value || nowDate(),
+        description: $('#p-desc').value.trim(),
+        draft,
+      },
     };
-    if (!payload.title) { setStatus('请填写标题', 'err'); return; }
+    if (!payload.frontmatter.title) { setStatus('请填写标题', 'err'); return; }
     try {
       const j = await postJson('/api/posts/save', payload);
-      setStatus(publish ? `已发布：${j.title || payload.title}` : `已保存草稿：${payload.title}`, 'ok');
-      addOp(`${publish ? '发布' : '保存'}文章：${payload.title}`);
-      if (!payload.draft) triggerRebuild();
+      const action = draft ? '已保存草稿' : '已发布';
+      setStatus(`${action}：${payload.frontmatter.title}`, 'ok');
+      addOp(`${action}文章：${payload.frontmatter.title}`);
+      if (!draft) triggerRebuild();
       backToPosts();
     } catch (e) { setStatus('保存失败：' + e.message, 'err'); }
   }
@@ -803,7 +831,7 @@
   }
   async function saveMusic() {
     try {
-      await postJson('/api/music/playlist', { ids: musicItems.map((x) => x.id) });
+      await postJson('/api/music/playlist', { items: musicItems });
       setStatus('歌单已保存', 'ok');
       addOp('保存歌单：' + musicItems.length + ' 首');
       triggerRebuild();

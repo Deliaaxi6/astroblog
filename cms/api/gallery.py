@@ -17,6 +17,7 @@ import time
 from datetime import datetime
 from fastapi import APIRouter, UploadFile, File, Form
 
+from api.image_validation import ALLOWED_EXTENSIONS, validate_image_content
 from api.posts import _parse_frontmatter
 
 router = APIRouter()
@@ -24,7 +25,6 @@ router = APIRouter()
 BLOG_ROOT = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", ".."))
 ALBUMS_DIR = os.path.join(BLOG_ROOT, "src", "content", "albums")
 
-ALLOWED_EXT = {".jpg", ".jpeg", ".png", ".gif", ".webp", ".avif"}
 MAX_SIZE = 15 * 1024 * 1024
 ID_SAFE = re.compile(r"[^a-zA-Z0-9_-]")
 
@@ -58,6 +58,10 @@ def _album_md_path(album_id: str) -> str:
     return os.path.join(ALBUMS_DIR, f"{album_id}.md")
 
 
+def _safe_album_id(album_id: str):
+    return album_id if re.fullmatch(r"[a-zA-Z0-9_-]+", album_id) else None
+
+
 @router.post("/albums")
 async def create_album(
     title: str = Form(...),
@@ -68,13 +72,16 @@ async def create_album(
     if not title:
         return {"success": False, "message": "相册名称不能为空"}
     ext = os.path.splitext(cover.filename or "cover.png")[1].lower()
-    if ext not in ALLOWED_EXT:
+    if ext not in ALLOWED_EXTENSIONS:
         return {"success": False, "message": f"不支持的封面类型: {ext or '(无扩展名)'}"}
-    data = await cover.read()
+    data = await cover.read(MAX_SIZE + 1)
     if not data:
         return {"success": False, "message": "封面为空文件"}
     if len(data) > MAX_SIZE:
         return {"success": False, "message": "封面超过 15MB 限制"}
+    valid, message = validate_image_content(cover.filename or "", data)
+    if not valid:
+        return {"success": False, "message": message}
 
     album_id = f"album_{int(time.time() * 1000)}"
     album_dir = os.path.join(ALBUMS_DIR, album_id)
@@ -101,6 +108,8 @@ async def create_album(
 
 @router.post("/albums/{album_id}/photos")
 async def upload_photos(album_id: str, files: list[UploadFile] = File(...)):
+    if not _safe_album_id(album_id):
+        return {"success": False, "message": "相册 ID 非法"}
     md_path = _album_md_path(album_id)
     if not os.path.exists(md_path):
         return {"success": False, "message": "相册不存在"}
@@ -119,15 +128,19 @@ async def upload_photos(album_id: str, files: list[UploadFile] = File(...)):
     saved, skipped = [], []
     for f in files:
         ext = os.path.splitext(f.filename or "")[1].lower()
-        if ext not in ALLOWED_EXT:
+        if ext not in ALLOWED_EXTENSIONS:
             skipped.append(f"{f.filename or '?'}：类型不支持")
             continue
-        data = await f.read()
+        data = await f.read(MAX_SIZE + 1)
         if not data:
             skipped.append(f"{f.filename or '?'}：空文件")
             continue
         if len(data) > MAX_SIZE:
             skipped.append(f"{f.filename or '?'}：超过 15MB")
+            continue
+        valid, message = validate_image_content(f.filename or "", data)
+        if not valid:
+            skipped.append(f"{f.filename or '?'}：{message}")
             continue
         name = f"{int(time.time() * 1000)}_{len(saved)}{ext}"
         try:
@@ -196,6 +209,8 @@ async def list_albums():
 @router.put("/albums/{album_id}")
 async def update_album(album_id: str, title: str = Form(...), description: str = Form("")):
     """编辑相册标题/描述"""
+    if not _safe_album_id(album_id):
+        return {"success": False, "message": "相册 ID 非法"}
     md_path = _album_md_path(album_id)
     if not os.path.exists(md_path):
         return {"success": False, "message": "相册不存在"}
@@ -218,6 +233,8 @@ async def update_album(album_id: str, title: str = Form(...), description: str =
 @router.delete("/albums/{album_id}")
 async def delete_album(album_id: str):
     """删除相册（md + 目录）"""
+    if not _safe_album_id(album_id):
+        return {"success": False, "message": "相册 ID 非法"}
     md_path = _album_md_path(album_id)
     album_dir = os.path.join(ALBUMS_DIR, album_id)
     if not os.path.exists(md_path) and not os.path.isdir(album_dir):

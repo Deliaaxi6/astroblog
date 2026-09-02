@@ -32,6 +32,11 @@ def _parse_frontmatter(raw: str):
     return fm, raw[m.end():]
 
 
+def _safe_id(raw_id: str):
+    value = raw_id.replace(".md", "")
+    return value if ID_RE.fullmatch(value) else None
+
+
 def _dump_frontmatter(fm: dict) -> str:
     lines = ["---"]
     for k in KNOWN_KEYS:
@@ -87,7 +92,9 @@ async def get_post(request: Request):
         payload = await request.json()
     except Exception:
         return {"success": False, "message": "JSON 解析失败"}
-    raw_id = str(payload.get("id", "")).replace(".md", "")
+    raw_id = _safe_id(str(payload.get("id", "")))
+    if not raw_id:
+        return {"success": False, "message": "ID 非法"}
     path = os.path.join(POSTS_DIR, f"{raw_id}.md")
     if not os.path.exists(path):
         return {"success": False, "message": "未找到该文章"}
@@ -107,6 +114,24 @@ async def save_post(request: Request):
     raw_id = str(payload.get("id", "")).strip()
     fm = dict(payload.get("frontmatter") or {})
     content = str(payload.get("content", ""))
+
+    title = fm.get("title")
+    if not isinstance(title, str) or not title.strip() or len(title.strip()) > 200:
+        return {"success": False, "message": "标题不能为空且不能超过 200 个字符"}
+    fm["title"] = title.strip()
+    description = fm.get("description", "")
+    if not isinstance(description, str) or len(description) > 1000:
+        return {"success": False, "message": "摘要必须是字符串且不能超过 1000 个字符"}
+    tags = fm.get("tags", [])
+    if not isinstance(tags, list) or len(tags) > 20 or not all(
+        isinstance(tag, str) and 0 < len(tag.strip()) <= 50 for tag in tags
+    ):
+        return {"success": False, "message": "标签最多 20 个，每个标签长度为 1-50 个字符"}
+    fm["tags"] = [tag.strip() for tag in tags]
+    if "draft" in fm and not isinstance(fm["draft"], bool):
+        return {"success": False, "message": "draft 必须是布尔值"}
+    if len(content.encode("utf-8")) > 2 * 1024 * 1024:
+        return {"success": False, "message": "文章正文不能超过 2MB"}
 
     for k in KNOWN_KEYS:
         if k in fm and fm[k] is None:
@@ -142,7 +167,9 @@ async def delete_post(request: Request):
         payload = await request.json()
     except Exception:
         return {"success": False, "message": "JSON 解析失败"}
-    raw_id = str(payload.get("id", "")).replace(".md", "")
+    raw_id = _safe_id(str(payload.get("id", "")))
+    if not raw_id:
+        return {"success": False, "message": "ID 非法"}
     path = os.path.join(POSTS_DIR, f"{raw_id}.md")
     if os.path.exists(path):
         os.remove(path)

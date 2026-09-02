@@ -31,6 +31,11 @@ def _parse(raw: str):
     return fm, raw[m.end():]
 
 
+def _safe_id(raw_id: str):
+    value = raw_id.replace(".md", "")
+    return value if ID_RE.fullmatch(value) else None
+
+
 def _dump(fm: dict) -> str:
     lines = ["---"]
     for k in ["id", "date", "location", "images", "pinned"]:
@@ -112,7 +117,9 @@ async def delete_moment(request: Request):
         payload = await request.json()
     except Exception:
         return {"success": False, "message": "JSON 解析失败"}
-    raw_id = str(payload.get("id", "")).replace(".md", "")
+    raw_id = _safe_id(str(payload.get("id", "")))
+    if not raw_id:
+        return {"success": False, "message": "ID 非法"}
     path = os.path.join(MOMENTS_DIR, f"{raw_id}.md")
     if os.path.exists(path):
         os.remove(path)

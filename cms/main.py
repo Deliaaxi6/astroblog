@@ -1,10 +1,12 @@
 import os
+import hmac
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
-from r2_picbed import router as picbed_router
+from r2_picbed import load_env, router as picbed_router
 from api.posts import router as posts_router
 from api.moments import router as moments_router
 from api.site_data import router as site_data_router
@@ -14,11 +16,13 @@ from api.sync import router as sync_router
 from api.local_images import router as local_images_router
 from api.gallery import router as gallery_router
 
+load_env()
+
 app = FastAPI(title="AstroBlog CMS Backend", version="0.1.0")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[origin.strip() for origin in os.environ.get("CMS_ALLOWED_ORIGINS", "").split(",") if origin.strip()],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -28,6 +32,21 @@ app.add_middleware(
 @app.get("/api/status")
 def get_status():
     return {"status": "online", "message": "中枢神经已连接"}
+
+
+@app.middleware("http")
+async def protect_api(request, call_next):
+    public_api = request.method == "OPTIONS" or request.url.path == "/api/status" or (
+        request.method == "GET" and request.url.path == "/api/music"
+    )
+    if request.url.path.startswith("/api/") and not public_api:
+        configured_key = os.environ.get("CMS_API_KEY", "")
+        provided_key = request.headers.get("X-CMS-API-Key", "")
+        if not configured_key:
+            return JSONResponse({"success": False, "message": "CMS_API_KEY 未配置"}, status_code=503)
+        if not hmac.compare_digest(provided_key, configured_key):
+            return JSONResponse({"success": False, "message": "未授权"}, status_code=401)
+    return await call_next(request)
 
 
 app.include_router(picbed_router, prefix="/api/picbed", tags=["PicBed"])
