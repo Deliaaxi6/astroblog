@@ -828,7 +828,7 @@ const pagefindScript = withBase('/pagefind/pagefind.js');
 			function onScroll() {
 				var y = window.scrollY;
 				var maxY = (document.documentElement.scrollHeight || 0) - (window.innerHeight || 0);
-				var fadeEnd = Math.min(bg.offsetHeight * 0.8, Math.max(1, maxY));
+				var fadeEnd = Math.min(bg.offsetHeight, Math.max(1, maxY));
 				var p = Math.min(1, y / fadeEnd);
 				bg.style.opacity = String(1 - p);
 			}
