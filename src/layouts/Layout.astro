@@ -108,22 +108,11 @@ const aboutPath = withBase('/about');
 		<main class="container">
 			<slot />
 			<footer class="site-footer">
-				© {new Date().getFullYear()} 纸上拾光 · Powered by Astro · <span id="uptime"></span>
+				© {new Date().getFullYear()} 纸上拾光 · Powered by Astro
 			</footer>
 		</main>
 		<div id="toast"></div>
-		<script define:vars={{ buildStamp: new Date().toISOString() }}>
-			const BUILD = new Date(buildStamp).getTime();
-			function tickUptime() {
-				const el = document.getElementById('uptime');
-				if (!el) return;
-				const diff = Math.max(0, Date.now() - BUILD);
-				const d = Math.floor(diff / 86400000);
-				const h = Math.floor((diff % 86400000) / 3600000);
-				el.textContent = '运行 ' + d + ' 天 ' + h + ' 小时';
-			}
-			tickUptime();
-			setInterval(tickUptime, 60000);
+		<script>
 			const lastY = { v: 0 };
 			const nav = document.getElementById('navbar');
 			const applyNavState = () => {
